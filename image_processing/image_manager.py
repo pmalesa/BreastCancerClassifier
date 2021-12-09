@@ -11,6 +11,40 @@ class ImageManager:
         self.__nNegativeCopied = 0
         self.__nConvertedImages = 0
 
+    def get_number_of_files(self, dir):
+        path, dirs, files = next(os.walk(dir))
+        return len(files)
+    
+    def save_wrong_sized_images(self, dir, output):
+        f = []
+        
+        # Get directory and file names
+        for (dirpath, dirnames, filenames) in walk(dir):
+            f.extend(filenames)
+            break
+
+        for filename in filenames:
+            im = Image.open(dir + filename)
+            width, height = im.size
+            if width != 50 or height != 50:
+                with open(output, 'a+') as f:
+                    f.write(filename + "\n")
+
+    def delete_wrong_sized_images(self, dir):
+        f = []
+        
+        # Get directory and file names
+        for (dirpath, dirnames, filenames) in walk(dir):
+            f.extend(filenames)
+            break
+
+        for filename in filenames:
+            path = dir + filename
+            im = Image.open(path)
+            width, height = im.size
+            if width != 50 or height != 50:
+                os.remove(path)
+
     def get_pixel_colors(self, image):
         im = Image.open(image)
         width, height = im.size
@@ -19,10 +53,12 @@ class ImageManager:
 
         pixels = im.getdata()
         pixel_colors = []
+
+        # 64-bit floats used for better performance
         for (r, g, b) in pixels:
-            pixel_colors.append(r)
-            pixel_colors.append(g)
-            pixel_colors.append(b)
+            pixel_colors.append(float(r))
+            pixel_colors.append(float(g))
+            pixel_colors.append(float(b))
         return pixel_colors
 
     def divide_into_categories(self, src_dir, dest_dir):
