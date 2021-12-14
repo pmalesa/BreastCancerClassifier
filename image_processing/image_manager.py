@@ -45,12 +45,12 @@ class ImageManager:
             if width != 50 or height != 50:
                 os.remove(path)
 
-    def get_pixel_colors(self, image):
+    def get_pixel_colors(self, image):              ### TO DO CHECK IF THIS IS EFFICIENT
         im = Image.open(image)
         width, height = im.size
         if width != 50 or height != 50:
             return []
-
+            
         pixels = im.getdata()
         pixel_colors = []
 
