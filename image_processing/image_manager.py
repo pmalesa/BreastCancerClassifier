@@ -4,12 +4,28 @@ import os
 from shutil import copyfile
 from os import walk
 from PIL import Image
+import numpy as np
 
 class ImageManager:
     def __init__(self):
+        self.__positive_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/1/"
+        self.__negative_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/0/"
+
+        self.__positive_examples_count = self.get_number_of_files(self.__positive_images_directory)
+        self.__negative_examples_count = self.get_number_of_files(self.__negative_images_directory)
+
+        self.__image_shape = (50, 50)
+        self.__attributes_count = 7500
+
         self.__nPositiveCopied = 0
         self.__nNegativeCopied = 0
         self.__nConvertedImages = 0
+
+    def get_positive_examples_count(self):
+        return self.__positive_examples_count
+    
+    def get_negative_examples_count(self):
+        return self.__negative_examples_count
 
     def get_number_of_files(self, dir):
         path, dirs, files = next(os.walk(dir))
@@ -48,18 +64,39 @@ class ImageManager:
     def get_pixel_colors(self, image):              ### TO DO CHECK IF THIS IS EFFICIENT
         im = Image.open(image)
         width, height = im.size
-        if width != 50 or height != 50:
+        if width != 50 or height != 50:             ### TODO      
             return []
-            
-        pixels = im.getdata()
-        pixel_colors = []
-
-        # 64-bit floats used for better performance
-        for (r, g, b) in pixels:
-            pixel_colors.append(float(r))
-            pixel_colors.append(float(g))
-            pixel_colors.append(float(b))
+        pixel_colors = np.asarray(im.getdata(), dtype = float).flatten()
+        im.close()
         return pixel_colors
+
+    # Loads data of images from first_image to last_image (last_image excluded) of given image_class
+    def load_image_data(self, first_image, last_image, image_class):
+        if first_image < 1 or last_image < 1:
+            return ([], [])
+        if first_image > last_image:
+            return ([], [])
+        if image_class == 1 and (first_image > self.__positive_examples_count or last_image > self.__positive_examples_count):
+            return ([], [])
+        if image_class == 0 and (first_image > self.__negative_examples_count or last_image > self.__negative_examples_count):
+            return ([], [])
+        
+        image_count = last_image - first_image
+        if image_class == 1:
+            y = np.ones(image_count)
+        else:
+            y = np.zeros(image_count)
+        X = np.zeros((image_count, self.__attributes_count), dtype = float)
+
+        example_index = 0
+        for filenumber in range(first_image, last_image):
+            if image_class == 1:
+                filepath = self.__positive_images_directory + str(filenumber) + ".png"
+            else:
+                filepath = self.__negative_images_directory + str(filenumber) + ".png"
+            X[example_index, :] = self.get_pixel_colors(filepath)
+            example_index += 1
+        return (X, y)
 
     def divide_into_categories(self, src_dir, dest_dir):
         self.__nPositiveCopied = 0        

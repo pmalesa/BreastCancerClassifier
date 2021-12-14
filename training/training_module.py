@@ -1,4 +1,4 @@
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import f1_score
 
 from image_processing.image_manager import ImageManager
@@ -15,143 +15,40 @@ import time
 
 class TrainingModule:
     def __init__(self):
-        self.__log_reg = LogisticRegression(max_iter = 1000)
+        self.__log_reg = SGDClassifier(loss = "log")
         self.__im = ImageManager()
         self.__positive_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/1/"
         self.__negative_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/0/"
-        # self.__positive_examples_count = self.__im.get_number_of_files(self.__positive_images_directory)
-        # self.__negative_examples_count = self.__im.get_number_of_files(self.__negative_images_directory)
-        self.__positive_examples_count = 5
-        self.__negative_examples_count = 5
+        self.__positive_examples_count = self.__im.get_positive_examples_count()
+        self.__negative_examples_count = self.__im.get_negative_examples_count()
 
-        # Training set contains 60% of all examples
-        self.__training_set_positive_examples_count = int(0.6 * self.__positive_examples_count)
-        self.__training_set_negative_examples_count = int(0.6 * self.__negative_examples_count)
+        # self.__positive_examples_count = 100
+        # self.__negative_examples_count = 100
+
+        # Training set contains 70% of all examples
+        self.__training_set_positive_examples_count = int(0.7 * self.__positive_examples_count)
+        self.__training_set_negative_examples_count = int(0.7 * self.__negative_examples_count)
         
-        # Validation set contains 20% of all examples
+        # Validation set contains 15% of all examples
         self.__validation_set_positive_examples_count = int((self.__positive_examples_count - self.__training_set_positive_examples_count) / 2)
         self.__validation_set_negative_examples_count = int((self.__negative_examples_count - self.__training_set_negative_examples_count) / 2)
         
-        # Test set contains 20% of all examples
+        # Test set contains 15% of all examples
         self.__test_set_positive_examples_count = self.__positive_examples_count - (self.__training_set_positive_examples_count + self.__validation_set_positive_examples_count)
         self.__test_set_negative_examples_count = self.__negative_examples_count - (self.__training_set_negative_examples_count + self.__validation_set_negative_examples_count)
 
+        self.__batch_size = 1000
+
         self.__attributes_count = 7500
-        self.__checkpoint = 10
+        self.__checkpoint = 1000
 
         self.__finalized_model_filename = "finalized_model_test.sav"
         self.__output_dir = "./output"
         self.__saved_models_dir = "./saved_models"
 
+        self.__log_reg_classes = np.array([0, 1])
+
         self.__start_time = time.time()
-
-        # --------------------LOADING-TRAINING-DATA--------------------
-        print("[INFO] Loading training data.")
-
-        y_training_positive = np.ones(self.__training_set_positive_examples_count)
-        y_training_negative = np.zeros(self.__training_set_negative_examples_count)
-
-        # Load positive examples
-        pixel_colors_matrix_pos = np.zeros((self.__training_set_positive_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(1, self.__training_set_positive_examples_count + 1):
-            filepath = self.__positive_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_pos[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "positive training images.")
-
-        # Load negative examples
-        pixel_colors_matrix_neg = np.zeros((self.__training_set_negative_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(1, self.__training_set_negative_examples_count + 1):
-            filepath = self.__negative_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_neg[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "negative training images.")    
-
-        # Concatenate positive and negative matrices
-        self.__X_training = np.vstack([pixel_colors_matrix_pos, pixel_colors_matrix_neg])
-        self.__y_training = np.hstack([y_training_positive, y_training_negative])
-
-        print("[INFO] Training data loaded.")
-
-        # --------------------LOADING-VALIDATION-DATA--------------------
-        print("[INFO] Loading validation data.")
-
-        y_cv_positive = np.ones(self.__validation_set_positive_examples_count)
-        y_cv_negative = np.zeros(self.__validation_set_negative_examples_count)
-
-        first_positive_cv_image_number = self.__test_set_positive_examples_count + self.__training_set_positive_examples_count + 1
-        first_negative_cv_image_number = self.__test_set_negative_examples_count + self.__training_set_negative_examples_count + 1
-
-        # Load positive validation examples
-        pixel_colors_matrix_pos = np.zeros((self.__validation_set_positive_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(first_positive_cv_image_number, first_positive_cv_image_number + self.__validation_set_positive_examples_count):
-            filepath = self.__positive_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_pos[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "positive validation images.")
-
-        # Load negative validation examples
-        pixel_colors_matrix_neg = np.zeros((self.__validation_set_negative_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(first_negative_cv_image_number, first_negative_cv_image_number + self.__validation_set_negative_examples_count):
-            filepath = self.__negative_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_neg[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "negative validation images.")
-
-        # Concatenate positive and negative matrices
-        self.__X_cv = np.vstack([pixel_colors_matrix_pos, pixel_colors_matrix_neg])
-        self.__y_cv = np.hstack([y_cv_positive, y_cv_negative])
-
-        print("[INFO] Validation data loaded.")
-
-        # --------------------LOADING-TEST-DATA--------------------
-        print("[INFO] Loading test data...")
-
-        y_test_positive = np.ones(self.__test_set_positive_examples_count)
-        y_test_negative = np.zeros(self.__test_set_negative_examples_count)
-
-        first_positive_test_image_number = self.__training_set_positive_examples_count + 1
-        first_negative_test_image_number = self.__training_set_negative_examples_count + 1
-
-        # Load positive test examples
-        pixel_colors_matrix_pos = np.zeros((self.__test_set_positive_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(first_positive_test_image_number, first_positive_test_image_number + self.__test_set_positive_examples_count):
-            filepath = self.__positive_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_pos[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "positive test images.")
-
-        # Load negative test examples
-        pixel_colors_matrix_neg = np.zeros((self.__test_set_negative_examples_count, self.__attributes_count), dtype = float)
-        example_index = 0
-        for filenumber in range(first_negative_test_image_number, first_negative_test_image_number + self.__test_set_negative_examples_count):
-            filepath = self.__negative_images_directory + str(filenumber) + ".png"
-            pixel_colors_vec = self.__im.get_pixel_colors(filepath)
-            pixel_colors_matrix_neg[example_index, :] = pixel_colors_vec
-            example_index += 1
-            if filenumber % self.__checkpoint == 0:
-                print("[INFO] Loaded", filenumber, "negative test images.")
-
-        # Concatenate positive and negative matrices
-        self.__X_test = np.vstack([pixel_colors_matrix_pos, pixel_colors_matrix_neg])
-        self.__y_test = np.hstack([y_test_positive, y_test_negative])
-
-        print("[INFO] Test data loaded.")
 
     def __predict_class(self, X_new):
         y_prob = self.__log_reg.predict_proba(X_new)
@@ -168,78 +65,131 @@ class TrainingModule:
         pickle.dump(self, open(self.__saved_models_dir + "/" + model_name, "wb"))
 
     def run(self):
-        nIterations = 1000
-        regularization_values = [ 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0 ]
-        solvers = ["sag", "saga"]
-
-        f1_best = 0.0 
-        reg_best = 0.0
-        solver_best = ""
-        accuracy_best = 0.0   
-
-        for reg in regularization_values:
-            for solver in solvers:
-                # Training
-                self.__train_logistic_regression_model(solver, reg, nIterations)
-                
-                # Validating
-                (accuracy, f1) = self.__validate_logistic_regression()
-
-                # Save output to file
-                filename = "validation-" + self.__log_reg.solver + "-" + str(self.__log_reg.C) + "-" + str(self.__log_reg.max_iter)
-                content = "*----VALIDATION----*\nSolver: " + self.__log_reg.solver + "\nregularization: " + str(self.__log_reg.C) + "\niterations: " + str(self.__log_reg.max_iter) + "\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
-                self.__output_results(filename, content)
-
-                if f1 > f1_best:
-                    f1_best = f1
-                    accuracy_best = accuracy
-                    solver_best = solver
-                    reg_best = reg
-
-        print("*----BEST----*")
-        print("f1:", f1_best)
-        print("accuracy:", accuracy_best) 
-        print("solver:", solver_best)
-        print("regularization:", reg_best)
-
-        # Save output to file
-        filename = "best-" + solver_best + "-" + str(reg_best) + "-" + str(self.__log_reg.max_iter)
-        content = "*----BEST----*\nSolver: " + solver_best + "\nregularization: " + str(reg_best) + "\niterations: " + str(self.__log_reg.max_iter) + "\nF1: " + str(f1_best) + "\naccuracy: " + str(accuracy_best)
-        self.__output_results(filename, content)
-
-        # Loading previously trained model
-        # self.__load_model("finalized_model_test.sav")
-        
-        # Testing
-        self.__train_logistic_regression_model(solver_best, reg_best, nIterations)
+        self.__train_logistic_regression_model()
+        self.__save_model()
         self.__test_logistic_regression()
 
+        # nIterations = 1000
+        # regularization_values = [ 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0 ]
+        # solvers = ["sag", "saga", "lbfgs"]
+
+        # f1_best = 0.0 
+        # reg_best = 0.0
+        # solver_best = ""
+        # accuracy_best = 0.0   
+
+        # for solver in solvers:
+        #     for reg in regularization_values:
+        #         # Training
+        #         self.__train_logistic_regression_model(solver, reg, nIterations)
+                
+        #         # Validating
+        #         (accuracy, f1) = self.__validate_logistic_regression()
+
+        #         # Save output to file
+        #         filename = "validation-" + self.__log_reg.solver + "-" + str(self.__log_reg.C) + "-" + str(self.__log_reg.max_iter)
+        #         content = "*----VALIDATION----*\nSolver: " + self.__log_reg.solver + "\nregularization: " + str(self.__log_reg.C) + "\niterations: " + str(self.__log_reg.max_iter) + "\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
+        #         self.__output_results(filename, content)
+
+        #         if f1 > f1_best:
+        #             f1_best = f1
+        #             accuracy_best = accuracy
+        #             solver_best = solver
+        #             reg_best = reg
+
+        # print("*----BEST----*")
+        # print("f1:", f1_best)
+        # print("accuracy:", accuracy_best) 
+        # print("solver:", solver_best)
+        # print("regularization:", reg_best)
+
+        # # Save output to file
+        # filename = "best-" + solver_best + "-" + str(reg_best) + "-" + str(self.__log_reg.max_iter)
+        # content = "*----BEST----*\nSolver: " + solver_best + "\nregularization: " + str(reg_best) + "\niterations: " + str(self.__log_reg.max_iter) + "\nF1: " + str(f1_best) + "\naccuracy: " + str(accuracy_best)
+        # self.__output_results(filename, content)
+
+        # # Loading previously trained model
+        # # self.__load_model("finalized_model_test.sav")
         
+        # # Testing
+        # self.__train_logistic_regression_model(solver_best, reg_best, nIterations)
+        # self.__test_logistic_regression()
+
         seconds_passed = time.time() - self.__start_time
         print("[INFO] Program finished after", str(int(seconds_passed / 60)) + ":" + str(seconds_passed % 60), "minutes")
 
-    def __train_logistic_regression_model(self, new_solver = "lbfgs", regularization = 1.0, nIterations = 1000):
-        self.__log_reg.solver = new_solver
-        self.__log_reg.C = regularization
-        self.__log_reg.max_iter = nIterations
+    def __train_logistic_regression_model(self, learning_rate = "optimal", regularization = 0.0001, iterations = 1000):
+        # Reinitialization of the classifier object
+        self.__log_reg = SGDClassifier(loss = "log")
+        self.__log_reg.learning_rate = learning_rate
+        self.__log_reg.alpha = regularization
+        self.__log_reg.max_iter = iterations
 
         print("\n*--------------------TRAINING--------------------*")
         print("[INFO] Learning from", self.__training_set_positive_examples_count + self.__training_set_negative_examples_count, "images in total.")
 
-        # Shuffling data
-        A = np.c_[ self.__X_training, self.__y_training]
-        np.random.shuffle(A)
-        num_cols = np.shape(A)[1]
-
-        self.__X_training = A[:, 0:num_cols - 1]
-        self.__y_training = A[:, num_cols - 1]
-
         # Training
         print("[INFO] Training started.")
-        self.__log_reg.fit(self.__X_training, self.__y_training)
+
+        positive_images_processed = 0
+        negative_images_processed = 0
+
+        while positive_images_processed < self.__training_set_positive_examples_count or negative_images_processed < self.__training_set_negative_examples_count:
+            positive_images_left = self.__training_set_positive_examples_count - positive_images_processed
+            negative_images_left = self.__training_set_negative_examples_count - negative_images_processed
+
+            # Creating a batch of mixed positive and negative examples (size of a batch is preserved)            
+            positive_images_batch_count = int(self.__batch_size / 2)
+            negative_images_batch_count = self.__batch_size - positive_images_batch_count
+
+            if positive_images_left == 0 and negative_images_left > 0:
+                negative_images_batch_count = self.__batch_size
+
+            if negative_images_left == 0 and positive_images_left > 0:
+                positive_images_batch_count = self.__batch_size
+
+            if positive_images_left < positive_images_batch_count:
+                positive_images_batch_count = positive_images_left
+
+            if negative_images_left < negative_images_batch_count:
+                negative_images_batch_count = negative_images_left
+
+            if positive_images_batch_count < int(self.__batch_size / 2) and negative_images_left >= self.__batch_size - positive_images_batch_count:
+                negative_images_batch_count = self.__batch_size - positive_images_batch_count
+
+            if negative_images_batch_count < int(self.__batch_size / 2) and positive_images_left >= self.__batch_size - negative_images_batch_count:
+                positive_images_batch_count = self.__batch_size - negative_images_batch_count
+
+            first_positive_image = positive_images_processed + 1
+            last_positive_image = first_positive_image + positive_images_batch_count
+            first_negative_image = negative_images_processed + 1
+            last_negative_image = first_negative_image + negative_images_batch_count
+
+            # Load matrices of data
+            (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
+            (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
+
+            X_training = np.vstack([X_pos, X_neg])
+            y_training = np.hstack([y_pos, y_neg])
+
+            # Shuffling data
+            A = np.c_[X_training, y_training]
+            np.random.shuffle(A)
+            num_cols = np.shape(A)[1]
+
+            X_training = A[:, 0:num_cols - 1]
+            y_training = A[:, num_cols - 1]
+
+            # Learning from batch
+            self.__log_reg.partial_fit(X_training, y_training, classes = self.__log_reg_classes)
+
+            print("Learned from a batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative")
+
+            positive_images_processed += positive_images_batch_count
+            negative_images_processed += negative_images_batch_count
+            
+        print("Total images processed:", positive_images_processed + negative_images_processed)
         print("[INFO] Training done.")
-        
-        self.__save_model()
 
     def __load_model(self, path):
         pickle.load(open(path, "rb"))
@@ -249,12 +199,12 @@ class TrainingModule:
         print("[INFO] Validating on", self.__validation_set_positive_examples_count + self.__validation_set_negative_examples_count, "images in total.")
 
         # Shuffling data
-        A = np.c_[ self.__X_cv, self.__y_cv]
-        np.random.shuffle(A)
-        num_cols = np.shape(A)[1]
+        # A = np.c_[self.__X_cv, self.__y_cv]
+        # np.random.shuffle(A)
+        # num_cols = np.shape(A)[1]
 
-        self.__X_cv = A[:, 0:num_cols - 1]
-        self.__y_cv = A[:, num_cols - 1]
+        # self.__X_cv = A[:, 0:num_cols - 1]
+        # self.__y_cv = A[:, num_cols - 1]
 
         # Validation
         print("[INFO] Validation started.")
@@ -279,29 +229,78 @@ class TrainingModule:
         print("\n*--------------------TESTING--------------------*")
         print("[INFO] Testing on", self.__test_set_positive_examples_count + self.__test_set_negative_examples_count, "images in total.")
 
-        # Shuffling data
-        A = np.c_[ self.__X_test, self.__y_test]
-        np.random.shuffle(A)
-        num_cols = np.shape(A)[1]
-
-        self.__X_test = A[:, 0:num_cols - 1]
-        self.__y_test = A[:, num_cols - 1]
-
         # Testing
         print("[INFO] Testing started.")
-        accuracy = self.__log_reg.score(self.__X_test, self.__y_test)
-        y_predicted = np.zeros(self.__y_test.shape, dtype = float)
-        i = 0
-        for example in self.__X_test:
-            example = example[np.newaxis, :]
-            y_predicted[i] = self.__log_reg.predict(example)
-            i += 1
-        f1 = f1_score(self.__y_test, y_predicted) 
+        positive_images_processed = 0
+        negative_images_processed = 0
+
+        accuracy_scores = np.array([])
+        # f1_scores = np.array([])
+
+        while positive_images_processed < self.__test_set_positive_examples_count or negative_images_processed < self.__test_set_negative_examples_count:
+            positive_images_left = self.__test_set_positive_examples_count - positive_images_processed
+            negative_images_left = self.__test_set_negative_examples_count - negative_images_processed
+
+            # Creating a batch of mixed positive and negative examples (size of a batch is preserved)            
+            positive_images_batch_count = int(self.__batch_size / 2)
+            negative_images_batch_count = self.__batch_size - positive_images_batch_count
+
+            if positive_images_left == 0 and negative_images_left > 0:
+                negative_images_batch_count = self.__batch_size
+
+            if negative_images_left == 0 and positive_images_left > 0:
+                positive_images_batch_count = self.__batch_size
+
+            if positive_images_left < positive_images_batch_count:
+                positive_images_batch_count = positive_images_left
+
+            if negative_images_left < negative_images_batch_count:
+                negative_images_batch_count = negative_images_left
+
+            if positive_images_batch_count < int(self.__batch_size / 2) and negative_images_left >= self.__batch_size - positive_images_batch_count:
+                negative_images_batch_count = self.__batch_size - positive_images_batch_count
+
+            if negative_images_batch_count < int(self.__batch_size / 2) and positive_images_left >= self.__batch_size - negative_images_batch_count:
+                positive_images_batch_count = self.__batch_size - negative_images_batch_count
+
+            first_positive_image = positive_images_processed + 1
+            last_positive_image = first_positive_image + positive_images_batch_count
+            first_negative_image = negative_images_processed + 1
+            last_negative_image = first_negative_image + negative_images_batch_count
+
+            # Load matrices of data
+            (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
+            (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
+
+            X_test = np.vstack([X_pos, X_neg])
+            y_test = np.hstack([y_pos, y_neg])
+
+            # Testing on a batch
+            accuracy = self.__log_reg.score(X_test, y_test)
+            y_predicted = np.zeros(y_test.shape, dtype = float)
+            i = 0
+            for example in X_test:
+                example = example[np.newaxis, :]
+                y_predicted[i] = self.__log_reg.predict(example)
+                i += 1
+            # f1 = f1_score(y_test, y_predicted)
+
+            accuracy_scores = np.append(accuracy_scores, accuracy)
+            # np.append(f1_scores, f1)
+
+            print("Tested on a batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative")
+
+            positive_images_processed += positive_images_batch_count
+            negative_images_processed += negative_images_batch_count
+
         print("[INFO] Testing done.")
+
+        accuracy = np.average(accuracy_scores)
+        # f1 = np.average(f1_scores)
 
         print("\n*--------------------RESULTS--------------------*")
         print("[INFO] Accuracy obtained on the test set:", accuracy * 100, "%")
-        print("[INFO] F1 score obtained on the test set:", f1)
+        # print("[INFO] F1 score obtained on the test set:", f1)
 
     def __output_results(self, filename, content):
         if not os.path.isdir(self.__output_dir):

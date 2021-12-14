@@ -4,9 +4,19 @@ import os
 from PIL import Image
 import numpy as np
 
+from image_processing.image_manager import ImageManager
+
 def main():
     tm = TrainingModule()
     tm.run()
+
+    # im = ImageManager()
+    # (X, y) = im.load_image_data(1, 1001, 1)
+    # print("X:", X)
+    # print("y:", y)
+    # print("X shape:", X.shape)
+    # print("y shape:", y.shape)
+
     return 0
 
 if __name__ == "__main__":
@@ -15,10 +25,11 @@ if __name__ == "__main__":
 
 
 # Remarks:
-# - Maybe refactor the training module class a little bit
+# - Maybe refactor the training module class a little bit (create a function to load image data)
+# - Think about a better solution to load and store data
+# - Think how to change the way of shuffling the data (right now your method is very inefficient, because it relies on copying the matrices)
 
-
-
+# - MAKE SURE THAT THE BATCHING PROCEDURE YOU CREATED WORKS PROPERLY - 
 
 
 
