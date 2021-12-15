@@ -76,9 +76,9 @@ class ImageManager:
             return ([], [])
         if first_image > last_image:
             return ([], [])
-        if image_class == 1 and (first_image > self.__positive_examples_count or last_image > self.__positive_examples_count):
+        if image_class == 1 and (first_image > self.__positive_examples_count or last_image > self.__positive_examples_count + 1):
             return ([], [])
-        if image_class == 0 and (first_image > self.__negative_examples_count or last_image > self.__negative_examples_count):
+        if image_class == 0 and (first_image > self.__negative_examples_count or last_image > self.__negative_examples_count + 1):
             return ([], [])
         
         image_count = last_image - first_image
