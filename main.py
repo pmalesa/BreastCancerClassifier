@@ -5,7 +5,9 @@ from PIL import Image
 import numpy as np
 
 def main():
-    tm = TrainingModule("neural_network")
+    tm = TrainingModule("logistic_regression")
+    tm.run()
+    tm.set_algorithm("neural_network")
     tm.run()
 
     return 0
@@ -22,7 +24,8 @@ if __name__ == "__main__":
 
 # - MAKE SURE THAT THE BATCHING PROCEDURE YOU CREATED WORKS PROPERLY - CAREFULLY CHECK AND VERIFY IF EVERYTHING LOADS CORRECTLY
 # - IMPORTANT: Think about and solve the problem with f1 score being 0.0 when I use the whole set for training.
-
+# - READ ABOUT PARTIAL_FIT() AND GET TO KNOW HOW IT WORKS
+# - ALSO CHCECK READ ABOUT CROSS-VALIDATION MORE THOROUGHLY
 
 
 
