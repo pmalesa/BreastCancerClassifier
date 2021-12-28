@@ -7,8 +7,6 @@ import numpy as np
 def main():
     tm = TrainingModule("logistic_regression")
     tm.run()
-    tm.set_algorithm("neural_network")
-    tm.run()
 
     return 0
 
@@ -18,14 +16,10 @@ if __name__ == "__main__":
 
 
 # Remarks:
-# - Maybe refactor the training module class a little bit (create a function to load image data)
-# - Think about a better solution to load and store data
 # - Think how to change the way of shuffling the data (right now your method is very inefficient, because it relies on copying the matrices)
 
-# - MAKE SURE THAT THE BATCHING PROCEDURE YOU CREATED WORKS PROPERLY - CAREFULLY CHECK AND VERIFY IF EVERYTHING LOADS CORRECTLY
-# - IMPORTANT: Think about and solve the problem with f1 score being 0.0 when I use the whole set for training.
-# - READ ABOUT PARTIAL_FIT() AND GET TO KNOW HOW IT WORKS
-# - ALSO CHCECK READ ABOUT CROSS-VALIDATION MORE THOROUGHLY
+# - think about getting rid of ImageManager and IOManager objects from each model
+# - use grid search for cross validation and finding the optimal hyperparameters
 
 
 
