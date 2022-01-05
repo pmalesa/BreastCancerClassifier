@@ -1,6 +1,6 @@
 from training.models.logistic_regression import LogististicRegression
 from training.models.multi_layer_perceptron import MultiLayerPerceptron
-# from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
+from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
 # from training.models.support_vector_machine import SupportVectorMachine
 
 from sklearn.metrics import f1_score
@@ -17,6 +17,7 @@ class TrainingModule:
     def __init__(self, chosen_algorithm = "logistic_regression"):
         self.__log_reg = LogististicRegression()
         self.__mlp = MultiLayerPerceptron()
+        self.__cnn = ConvolutionalNeuralNetwork()
 
         self.__chosen_algorithm = chosen_algorithm
 
@@ -27,7 +28,7 @@ class TrainingModule:
         if algorithm == "logistic_regression" or algorithm == "mlp" or algorithm == "cnn" or algorithm == "svm":
             self.__chosen_algorithm = algorithm 
 
-    def __save_chosen_model(self):
+    def save_chosen_model(self):
         if not os.path.isdir(self.__saved_models_dir):
             os.mkdir(self.__saved_models_dir)
 
@@ -35,24 +36,24 @@ class TrainingModule:
         filename = self.__chosen_algorithm + "_" + current_time + ".sav"
 
         if self.__chosen_algorithm == "logistic_regression":
-            self.__log_reg.save_model(self.__saved_models_dir, filename)
+            self.__log_reg.save_model(self.__saved_models_dir)
         elif self.__chosen_algorithm == "mlp":
-            self.__mlp.save_model(self.__saved_models_dir, filename)
+            self.__mlp.save_model(self.__saved_models_dir)
         elif self.__chosen_algorithm == "cnn":
-            pass
+            self.__cnn.save_model(self.__saved_models_dir)
         elif self.__chosen_algorithm == "svm":
             pass
 
-    def __load_logistic_regression_model(self, path):
+    def load_logistic_regression_model(self, path):
         self.__log_reg.load_model(path)
 
-    def __load_mlp_model(self, path):
+    def load_mlp_model(self, path):
         self.__mlp.load_model(path)
 
-    def __load_cnn_model(self, path):
-        pass
+    def load_cnn_model(self, path):
+        self.__cnn.load_model(path)
 
-    def __load_svm_model(self, path):
+    def load_svm_model(self, path):
         pass
 
     def run(self):
@@ -62,7 +63,7 @@ class TrainingModule:
         elif self.__chosen_algorithm == "mlp":
             self.__mlp.start_learning_process()
         elif self.__chosen_algorithm == "cnn":
-            pass
+            self.__cnn.start_learning_process()
         elif self.__chosen_algorithm == "svm":
             pass 
         seconds_passed = time.time() - start_time

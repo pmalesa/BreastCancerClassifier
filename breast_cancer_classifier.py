@@ -1,12 +1,9 @@
 from training.training_module import TrainingModule
-import os
-
-from PIL import Image
-import numpy as np
 
 def main():
-    tm = TrainingModule("logistic_regression")
+    tm = TrainingModule("cnn")
     tm.run()
+    tm.save_chosen_model()
 
     return 0
 
@@ -17,11 +14,8 @@ if __name__ == "__main__":
 
 # Remarks:
 # - Think how to change the way of shuffling the data (right now your method is very inefficient, because it relies on copying the matrices)
-
 # - think about getting rid of ImageManager and IOManager objects from each model
 # - use grid search for cross validation and finding the optimal hyperparameters
-
-
 
 
 

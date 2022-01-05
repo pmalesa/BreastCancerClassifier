@@ -1,5 +1,6 @@
-from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import f1_score
+import tensorflow as tf
+from tensorflow import keras
+from keras.models import Sequential
 
 from image_processing.image_manager import ImageManager
 from io_module.io_manager import IOManager
@@ -7,13 +8,37 @@ from io_module.io_manager import IOManager
 from datetime import datetime
 
 import numpy as np
-import pickle
 import os
 import time
 
-class LogististicRegression:
-    def __init__(self, loss = "log", shuffle = True, verbose = 1, eta0 = 1.0, warm_start = True):
-        self.__log_reg = SGDClassifier(loss = loss, shuffle = shuffle, verbose = verbose, eta0 = eta0, warm_start = warm_start)
+class ResidualUnit(keras.layers.Layer):
+    def __init__(self, filters, strides = 1, activation = "relu", **kwargs):
+        super().__init__(**kwargs)
+        self.activation = keras.activations.get(activation)
+        self.main_layers = [
+            keras.layers.Conv2D(filters, 3, strides = strides, padding = "same", use_bias = False),
+            keras.layers.BatchNormalization(),
+            self.activation,
+            keras.layers.Conv2D(filters, 3, strides = 1, padding = "same", use_bias = False),
+            keras.layers.BatchNormalization()] 
+        self.skip_layers = []
+        if strides > 1:
+            self.skip_layers = [
+                keras.layers.Conv2D(filters, 1, strides = strides, padding = "same", use_bias = False),
+                keras.layers.BatchNormalization()]
+    
+    def call(self, inputs):
+        Z = inputs
+        for layer in self.main_layers:
+            Z = layer(Z)
+        skip_Z = inputs
+        for layer in self.skip_layers:
+            skip_Z = layer(skip_Z)
+        return self.activation(Z + skip_Z)    
+
+class ConvolutionalNeuralNetwork:
+    def __init__(self):
+        self.__model = keras.models.Sequential()
 
         self.__im = ImageManager()
         self.__io = IOManager()
@@ -40,33 +65,44 @@ class LogististicRegression:
         self.__test_set_negative_examples_count = self.__negative_examples_count - (self.__training_set_negative_examples_count + self.__validation_set_negative_examples_count)
 
         self.__batch_size = 1000
-        self.__finalized_model_filename = "logistic_regression_finalized_model.sav"
-    
+        self.__finalized_model_filename = "cnn_finalized_model.sav"
+
+
     def save_model(self, directory):
-        pickle.dump(self.__log_reg, open(directory + "/" + self.__finalized_model_filename, "wb"))
+        self.__model.save(directory + "/" + self.__finalized_model_filename)
 
     def load_model(self, path):
-        self.__log_reg = pickle.load(open(path, "rb"))
+        self.__model = keras.models.load_model(path)
 
     def start_learning_process(self):
         self.__train()
         self.__test()
         # TBC - here I will test and validate the model for different hyperparameters
 
-    def __reset(self):
-        self.__log_reg = SGDClassifier(loss = self.__log_reg.loss, shuffle = self.__log_reg.shuffle,
-            verbose = self.__log_reg.verbose, eta0 = self.__log_reg.eta0, warm_start = self.__log_reg.warm_start)
+    def __initialize_resnet_model(self, learning_rate):
+        self.__model.add(keras.layers.Conv2D(64, 7, strides = 2, input_shape = [50, 50, 3], padding = "same", use_bias = False))
+        self.__model.add(keras.layers.BatchNormalization())
+        self.__model.add(keras.layers.Activation("relu"))
+        self.__model.add(keras.layers.MaxPool2D(pool_size = 3, strides = 2, padding = "same"))
+        prev_filters = 64
+        for filters in [64] * 3 + [128] * 4 + [256] * 6 + [512] * 3:
+            strides = 1 if filters == prev_filters else 2
+            self.__model.add(ResidualUnit(filters, strides = strides))
+            prev_filters = filters
+        self.__model.add(keras.layers.GlobalAvgPool2D())
+        self.__model.add(keras.layers.Flatten())
+        self.__model.add(keras.layers.Dense(1, activation = "sigmoid")) # try relu and softmax
+        self.__model.compile(loss = "binary_crossentropy", optimizer = keras.optimizers.SGD(learning_rate = learning_rate), metrics = ["accuracy"])        
 
-    def __train(self, learning_rate = "optimal", regularization = 0.0001, iterations = 1000):
-        print("\n*--------------------TRAINING-LOGISTIC-REGRESSION--------------------*")
-        print("[INFO] Training of logistic regression model started.")
+    def __train(self, learning_rate = 0.01, epochs = 10):
+        print("\n*--------------------TRAINING-CONVOLUTIONAL-NEURAL-NETWORK--------------------*")
+        print("[INFO] Training of convolutional neural network model (ResNet-34) started.")
         print("[INFO] Learning from", self.__training_set_positive_examples_count + self.__training_set_negative_examples_count, "images in total.")
 
-        # Reinitialize SGDClassifier object and initialize hyperparameters
-        self.__reset()
-        self.__log_reg.learning_rate = learning_rate
-        self.__log_reg.alpha = regularization
-        self.__log_reg.max_iter = iterations
+        gpu_devices = tf.config.list_physical_devices('GPU')
+        print("[INFO] Number of GPUs available:", len(gpu_devices))
+
+        self.__initialize_resnet_model(learning_rate)
 
         positive_images_processed = 0
         negative_images_processed = 0
@@ -103,22 +139,14 @@ class LogististicRegression:
             last_negative_image = first_negative_image + negative_images_batch_count
 
             # Load matrices of data
-            (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
-            (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
+            (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
+            (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
 
-            X_training = np.vstack([X_pos, X_neg])
+            X_training = np.concatenate((X_pos, X_neg), axis = 0)
             y_training = np.hstack([y_pos, y_neg])
 
-            # Shuffling data
-            A = np.c_[X_training, y_training]
-            np.random.shuffle(A)
-            num_cols = np.shape(A)[1]
-
-            X_training = A[:, 0:num_cols - 1]
-            y_training = A[:, num_cols - 1]
-
             # Learning from batch
-            self.__log_reg.fit(X_training, y_training)
+            history = self.__model.fit(X_training, y_training, epochs = epochs, shuffle = True)
 
             positive_images_processed += positive_images_batch_count
             negative_images_processed += negative_images_batch_count
@@ -129,8 +157,8 @@ class LogististicRegression:
         print("[INFO] Total images processed:", positive_images_processed + negative_images_processed)
 
     def __validate(self):
-        print("\n*--------------------VALIDATING-LOGISTIC-REGRESSION--------------------*")
-        print("[INFO] Validation of logistic regression model started.")
+        print("\n*--------------------VALIDATING-CONVOLUTIONAL-NEURAL-NETWORK--------------------*")
+        print("[INFO] Validation of convolutional neural network model (ResNet-34) started.")
         print("[INFO] Validating on", self.__validation_set_positive_examples_count + self.__validation_set_negative_examples_count, "images in total.")
 
         first_positive_image = self.__training_set_positive_examples_count + 1 
@@ -139,23 +167,23 @@ class LogististicRegression:
         last_negative_image = first_negative_image + self.__validation_set_negative_examples_count
 
         # Load matrices of data
-        (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
-        (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
+        (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
+        (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
 
-        X_cv = np.vstack([X_pos, X_neg])
+        X_cv = np.concatenate((X_pos, X_neg), axis = 0)
         y_cv = np.hstack([y_pos, y_neg])
 
-        # Validating the model by computing accuracy and f1 metrics
-        accuracy = self.__log_reg.score(X_cv, y_cv)
-        y_predicted = self.__log_reg.predict(X_cv)
-        f1 = f1_score(y_cv, y_predicted)
-        print("[INFO] Validation of logistic regression model finished.")
+        # Validating the model by computing accuracy and f1 metrics TODO
+        # accuracy = self.__log_reg.score(X_cv, y_cv)
+        # y_predicted = self.__log_reg.predict(X_cv)
+        # f1 = f1_score(y_cv, y_predicted)
+        print("[INFO] Validation of convolutional neural network model (ResNet-34) finished.")
 
-        return (accuracy, f1)
+        # return (accuracy, f1)
 
     def __test(self):
-        print("\n*--------------------TESTING-LOGISTIC-REGRESSION--------------------*")
-        print("[INFO] Testing of logistic regression model started.")
+        print("\n*--------------------TESTING-CONVOLUTIONAL-NEURAL-NETWORK--------------------*")
+        print("[INFO] Testing of convolutional neural network model (ResNet-34) started.")
         print("[INFO] Testing on", self.__test_set_positive_examples_count + self.__test_set_negative_examples_count, "images in total.")
 
         first_positive_image = self.__training_set_positive_examples_count + self.__validation_set_positive_examples_count + 1 
@@ -164,28 +192,29 @@ class LogististicRegression:
         last_negative_image = first_negative_image + self.__test_set_negative_examples_count
 
         # Load matrices of data
-        (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
-        (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
+        (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
+        (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
 
-        X_test = np.vstack([X_pos, X_neg])
+        X_test = np.concatenate((X_pos, X_neg), axis = 0)
         y_test = np.hstack([y_pos, y_neg])
 
         # Testing on a batch
-        accuracy = self.__log_reg.score(X_test, y_test)
-        y_predicted = self.__log_reg.predict(X_test)
-        f1 = f1_score(y_test, y_predicted)
+        accuracy = self.__model.evaluate(X_test, y_test)
+        # y_predicted = self.__log_reg.predict(X_test)
+        # f1 = f1_score(y_test, y_predicted)
 
         print("[INFO] Testing done.")
         print("[INFO] Tested on ", self.__test_set_positive_examples_count + self.__test_set_negative_examples_count, "examples --->", self.__test_set_positive_examples_count, "positive and", self.__test_set_negative_examples_count, "negative.")
 
-        print("\n*--------------------LOGISTIC-REGRESSION-TESTING-RESULTS--------------------*")
+        print("\n*--------------------CONVOLUTIONAL-NEURAL-NETWORK-TESTING-RESULTS--------------------*")
         print("[INFO] Accuracy obtained on the test set:", accuracy)
-        print("[INFO] F1 score obtained on the test set:", f1)
+        # print("[INFO] F1 score obtained on the test set:", f1)
 
         # Save output to file
         current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
-        filename = "logistic_regression_metrics_results_" + str(current_time) + ".txt"
-        content = "*----RESULTS----*\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
+        filename = "resnet_cnn_metrics_results_" + str(current_time) + ".txt"
+        # content = "*----RESULTS----*\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
+        content = "*----RESULTS----*\n\naccuracy: " + str(accuracy)
         self.__io.save_results(filename, content)
 
         # -----------------------------------------------------------------

@@ -14,7 +14,9 @@ class ImageManager:
         self.__positive_examples_count = self.get_number_of_files(self.__positive_images_directory)
         self.__negative_examples_count = self.get_number_of_files(self.__negative_images_directory)
 
-        self.__image_shape = (50, 50)
+        self.__image_height = 50
+        self.__image_width = 50
+        self.__image_channels = 3
         self.__attributes_count = 7500
 
         self.__nPositiveCopied = 0
@@ -41,8 +43,7 @@ class ImageManager:
 
         for filename in filenames:
             im = Image.open(dir + filename)
-            width, height = im.size
-            if width != 50 or height != 50:
+            if im.size != (50, 50):
                 with open(output, 'a+') as f:
                     f.write(filename + "\n")
 
@@ -57,21 +58,55 @@ class ImageManager:
         for filename in filenames:
             path = dir + filename
             im = Image.open(path)
-            width, height = im.size
-            if width != 50 or height != 50:
+            if im.size != (50, 50): 
                 os.remove(path)
 
-    def get_pixel_colors(self, image):              ### TO DO CHECK IF THIS IS EFFICIENT
+    def get_pixel_colors(self, image):
         im = Image.open(image)
-        width, height = im.size
-        if width != 50 or height != 50:             ### TODO      
+        if im.size != (50, 50):       
             return []
-        pixel_colors = np.asarray(im.getdata(), dtype = float).flatten()
+        pixel_colors = np.asarray(im, dtype = float) / 255.0
         im.close()
         return pixel_colors
 
     # Loads data of images from first_image to last_image (last_image excluded) of given image_class
     def load_image_data(self, first_image, last_image, image_class):
+        if first_image < 1 or last_image < 1:
+            return ([], [])
+        if first_image > last_image:
+            return ([], [])
+        if image_class == 1 and (first_image > self.__positive_examples_count or last_image > self.__positive_examples_count + 1):
+            return ([], [])
+        if image_class == 0 and (first_image > self.__negative_examples_count or last_image > self.__negative_examples_count + 1):
+            return ([], [])
+        
+        image_count = last_image - first_image
+        if image_class == 1:
+            y = np.ones(image_count)
+        else:
+            y = np.zeros(image_count)
+        X = np.zeros((image_count, self.__image_height, self.__image_width, self.__image_channels), dtype = float)
+
+        example_index = 0
+        for filenumber in range(first_image, last_image):
+            if image_class == 1:
+                filepath = self.__positive_images_directory + str(filenumber) + ".png"
+            else:
+                filepath = self.__negative_images_directory + str(filenumber) + ".png"
+            X[example_index, :] = self.get_pixel_colors(filepath)
+            example_index += 1
+        return (X, y)
+
+    def get_pixel_colors_flattened(self, image):
+        im = Image.open(image)
+        if im.size != (50, 50):        
+            return []
+        pixel_colors = np.asarray(im.getdata(), dtype = float).flatten() / 255.0
+        im.close()
+        return pixel_colors
+
+    # Loads flattened data of images from first_image to last_image (last_image excluded) of given image_class
+    def load_image_data_flattened(self, first_image, last_image, image_class):
         if first_image < 1 or last_image < 1:
             return ([], [])
         if first_image > last_image:
@@ -94,7 +129,7 @@ class ImageManager:
                 filepath = self.__positive_images_directory + str(filenumber) + ".png"
             else:
                 filepath = self.__negative_images_directory + str(filenumber) + ".png"
-            X[example_index, :] = self.get_pixel_colors(filepath)
+            X[example_index, :] = self.get_pixel_colors_flattened(filepath)
             example_index += 1
         return (X, y)
 

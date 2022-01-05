@@ -104,8 +104,8 @@ class MultiLayerPerceptron:
             last_negative_image = first_negative_image + negative_images_batch_count
 
             # Load matrices of data
-            (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
-            (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
+            (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
+            (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
 
             X_training = np.vstack([X_pos, X_neg])
             y_training = np.hstack([y_pos, y_neg])
@@ -140,8 +140,8 @@ class MultiLayerPerceptron:
         last_negative_image = first_negative_image + self.__validation_set_negative_examples_count
 
         # Load matrices of data
-        (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
-        (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
+        (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
+        (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
 
         X_cv = np.vstack([X_pos, X_neg])
         y_cv = np.hstack([y_pos, y_neg])
@@ -165,8 +165,8 @@ class MultiLayerPerceptron:
         last_negative_image = first_negative_image + self.__test_set_negative_examples_count
 
         # Load matrices of data
-        (X_pos, y_pos) = self.__im.load_image_data(first_positive_image, last_positive_image, 1)
-        (X_neg, y_neg) = self.__im.load_image_data(first_negative_image, last_negative_image, 0)
+        (X_pos, y_pos) = self.__im.load_image_data_flattened(first_positive_image, last_positive_image, 1)
+        (X_neg, y_neg) = self.__im.load_image_data_flattened(first_negative_image, last_negative_image, 0)
 
         X_test = np.vstack([X_pos, X_neg])
         y_test = np.hstack([y_pos, y_neg])
@@ -190,10 +190,10 @@ class MultiLayerPerceptron:
         self.__io.save_results(filename, content)
 
         # -----------------------------------------------------------------
-        file_path = "./output/mlp_classification_results" + current_time + ".txt"
-        f = open(file_path, 'w+')
-        f.write("PRED     REAL\n")
-        for i in range(0, y_test.shape[0]):
-           f.write(str(y_predicted[i]) + "    " + str(y_test[i]) + "\n")
-        f.close()
+        # file_path = "./output/mlp_classification_results" + current_time + ".txt"
+        # f = open(file_path, 'w+')
+        # f.write("PRED     REAL\n")
+        # for i in range(0, y_test.shape[0]):
+        #    f.write(str(y_predicted[i]) + "    " + str(y_test[i]) + "\n")
+        # f.close()
         # -----------------------------------------------------------------
