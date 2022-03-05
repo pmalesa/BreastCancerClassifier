@@ -1,7 +1,7 @@
 from training.models.logistic_regression import LogististicRegression
 from training.models.multi_layer_perceptron import MultiLayerPerceptron
-from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
-# from training.models.support_vector_machine import SupportVectorMachine
+#from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
+from training.models.support_vector_machine import SupportVectorMachine
 
 from sklearn.metrics import f1_score
 
@@ -17,7 +17,8 @@ class TrainingModule:
     def __init__(self, chosen_algorithm = "logistic_regression"):
         self.__log_reg = LogististicRegression()
         self.__mlp = MultiLayerPerceptron()
-        self.__cnn = ConvolutionalNeuralNetwork()
+        self.__svm = SupportVectorMachine()
+        #self.__cnn = ConvolutionalNeuralNetwork()
 
         self.__chosen_algorithm = chosen_algorithm
 
@@ -42,7 +43,7 @@ class TrainingModule:
         elif self.__chosen_algorithm == "cnn":
             self.__cnn.save_model(self.__saved_models_dir)
         elif self.__chosen_algorithm == "svm":
-            pass
+            self.__svm.save_model(self.__saved_models_dir)
 
     def load_logistic_regression_model(self, path):
         self.__log_reg.load_model(path)
@@ -54,7 +55,7 @@ class TrainingModule:
         self.__cnn.load_model(path)
 
     def load_svm_model(self, path):
-        pass
+        self.__svm.load_model(path)
 
     def run(self):
         start_time = time.time()
@@ -65,7 +66,7 @@ class TrainingModule:
         elif self.__chosen_algorithm == "cnn":
             self.__cnn.start_learning_process()
         elif self.__chosen_algorithm == "svm":
-            pass 
+            self.__svm.start_learning_process() 
         seconds_passed = time.time() - start_time
         print("[INFO] Program finished after", str(int(seconds_passed / 60)) + ":" + str(seconds_passed % 60), "minutes")
 

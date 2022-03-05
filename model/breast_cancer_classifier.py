@@ -1,9 +1,9 @@
 from training.training_module import TrainingModule
 
 def main():
-    tm = TrainingModule("cnn")
+    tm = TrainingModule("svm")
     tm.run()
-    tm.save_chosen_model()
+    #tm.save_chosen_model()
 
     return 0
 
@@ -16,6 +16,11 @@ if __name__ == "__main__":
 # - Think how to change the way of shuffling the data (right now your method is very inefficient, because it relies on copying the matrices)
 # - think about getting rid of ImageManager and IOManager objects from each model
 # - use grid search for cross validation and finding the optimal hyperparameters
+# - Think about how to omit the situation with declaring the model object with parameters in the constructor and then calling reset at the
+#   beginning of the train function which initializes the object once again
+
+# - SOMETHING IS WRONG WITH ITERATING OVER THE HYPERPARAMETERS IN SVM MODEL CLASS, AND IN THE OTHERS PROBABLY TOO
+# - CROSSVALIDATE THE CNN WITH THE ARGUMENTS PASSED TO FIT FUNCTION
 
 
 

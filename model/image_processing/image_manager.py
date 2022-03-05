@@ -8,8 +8,8 @@ import numpy as np
 
 class ImageManager:
     def __init__(self):
-        self.__positive_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/1/"
-        self.__negative_images_directory = "../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/0/"
+        self.__positive_images_directory = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/1/"
+        self.__negative_images_directory = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized/0/"
 
         self.__positive_examples_count = self.get_number_of_files(self.__positive_images_directory)
         self.__negative_examples_count = self.get_number_of_files(self.__negative_images_directory)
