@@ -15,6 +15,16 @@ class SupportVectorMachine:
     def __init__(self, loss = "hinge", shuffle = True, verbose = 1, eta0 = 1.0, warm_start = True):
         self.__svm = SGDClassifier(loss = loss, shuffle = shuffle, verbose = verbose, eta0 = eta0, warm_start = warm_start)
 
+        # Model parameters
+        self.__loss = loss
+        self.__shuffle = shuffle
+        self.__verbose = verbose
+        self.__eta0 = eta0
+        self.__warm_start = warm_start
+        self.__alpha = 0.0001
+
+        self.__dirty = False
+
         self.__im = ImageManager()
         self.__io = IOManager()
 
@@ -42,8 +52,6 @@ class SupportVectorMachine:
         self.__batch_size = 1000
         self.__finalized_model_filename = "svm_finalized_model.sav"
 
-        self.__C = 1.0
-
     def save_model(self, directory):
         pickle.dump(self.__svm, open(directory + "/" + self.__finalized_model_filename, "wb"))
 
@@ -51,27 +59,41 @@ class SupportVectorMachine:
         self.__svm = pickle.load(open(path, "rb"))
 
     def start_learning_process(self):
+        log_message = "*-----(LEARNING_PROCESS_STARTED)-----*"
+        self.__io.append_log(log_message)
+        alpha_values = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+        best_accuracy = 0.0
+        best_alpha = 0.0
+        for alpha in alpha_values:
+            self.__train(alpha = alpha)
+            (accuracy, f1) = self.__validate()
+            log_message = "(Validation) Alpha = " + str(alpha) + " : accuracy = " + str(accuracy) + "; f1 = " + str(f1) + ";"
+            self.__io.append_log(log_message)
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_alpha = alpha
 
-        # C_values = [1.0, 5.0]
-        # for C in C_values:
-        self.__train(C = 5.0)
-        self.__test()
-        # TBC - here I will test and validate the model for different hyperparameters
+        print("[INFO] BEST PARAMETERS: \n   -alpha: " + str(best_alpha))
+        self.__train(alpha = best_alpha)
+        (test_accuracy, test_f1) = self.__test()
+        log_message = "(Testing) best_alpha = " + str(best_alpha) + " : accuracy = " + str(test_accuracy) + "; f1 = " + str(test_f1) + ";"
+        self.__io.append_log(log_message)
 
     def __reset(self):
-        self.__svm = SGDClassifier(loss = self.__svm.loss, shuffle = self.__svm.shuffle,
-            verbose = self.__svm.verbose, eta0 = self.__svm.eta0, warm_start = self.__svm.warm_start)
+        del self.__svm
+        self.__svm = SGDClassifier(loss = self.__loss, shuffle = self.__shuffle, verbose = self.__verbose, eta0 = self.__eta0, warm_start = self.__warm_start)
 
-    def __train(self, learning_rate = "optimal", C = 1.0, iterations = 1000):
+    def __train(self, learning_rate = "optimal", alpha = 0.0001, iterations = 1000):
         print("\n*--------------------TRAINING-SVM--------------------*")
         print("[INFO] Training of SVM model started.")
         print("[INFO] Learning from", self.__training_set_positive_examples_count + self.__training_set_negative_examples_count, "images in total.")
 
         # Reinitialize SGDClassifier object and initialize hyperparameters
-        self.__reset()
+        if self.__dirty == True:
+            self.__reset()
         self.__svm.learning_rate = learning_rate
-        self.__C = C
-        self.__svm.alpha = 1 / ((self.__positive_examples_count + self.__negative_examples_count) * C)
+        self.__alpha = alpha
+        self.__svm.alpha = alpha
         self.__svm.max_iter = iterations
 
         positive_images_processed = 0
@@ -129,6 +151,7 @@ class SupportVectorMachine:
             positive_images_processed += positive_images_batch_count
             negative_images_processed += negative_images_batch_count
 
+            self.__dirty = True
             print("[INFO] Batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative --->", positive_images_processed + negative_images_processed, "examples in total.")
 
         print("[INFO] Training done.")
@@ -190,7 +213,8 @@ class SupportVectorMachine:
 
         # Save output to file
         current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
-        filename = "svm_metrics_results_" + str(current_time) + "_" + str(self.__C) + ".txt"
-        content = "*----RESULTS----*\n\nC = " + str(self.__C) + "\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
+        filename = "svm_metrics_results_" + str(current_time) + "_" + str(self.__alpha) + ".txt"
+        content = "*----RESULTS----*\n\nC = " + str(self.__alpha) + "\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
         self.__io.save_results("svm", filename, content)
 
+        return (accuracy, f1)

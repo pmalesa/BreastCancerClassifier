@@ -18,6 +18,7 @@ if __name__ == "__main__":
 # - use grid search for cross validation and finding the optimal hyperparameters
 # - Think about how to omit the situation with declaring the model object with parameters in the constructor and then calling reset at the
 #   beginning of the train function which initializes the object once again
+# - Think about using the scikit learn's grid search class, but it is not necessary
 
 # - SOMETHING IS WRONG WITH ITERATING OVER THE HYPERPARAMETERS IN SVM MODEL CLASS, AND IN THE OTHERS PROBABLY TOO
 # - CROSSVALIDATE THE CNN WITH THE ARGUMENTS PASSED TO FIT FUNCTION
