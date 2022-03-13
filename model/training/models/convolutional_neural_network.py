@@ -74,11 +74,35 @@ class ConvolutionalNeuralNetwork:
         self.__model = keras.models.load_model(path)
 
     def start_learning_process(self):
-        self.__train()
-        self.__test()
-        # TBC - here I will test and validate the model for different hyperparameters
+        log_message = "*-----(CNN_LEARNING_PROCESS_STARTED)-----*"
+        self.__io.append_log(log_message)
+        learning_rates = [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0 ]
+        epochs_values = [ 10, 20, 50, 100]
+
+        best_accuracy = 0.0
+        best_learning_rate = 0.0
+        best_epochs_value = 0
+
+        for learning_rate in learning_rates:
+            for epochs in epochs_values:
+                self.__train(learning_rate = learning_rate, epochs = epochs)
+                (accuracy, f1) = self.__validate()
+                log_message = f"(Validation) learning_rate = {learning_rate}; epochs = {epochs}; accuracy = {accuracy}; f1 = {f1}" 
+                self.__io.append_log(log_message)
+                if accuracy > best_accuracy:
+                    best_accuracy = accuracy
+                    best_learning_rate = learning_rate
+                    best_epochs_value = epochs
+
+        print(f"[INFO] BEST TRAINING PARAMETERS:\nlearning_rate = {best_learning_rate}; epochs = {epochs}")
+        self.__train(learning_rate = best_learning_rate, epochs = best_epochs_value)
+        (test_accuracy, test_f1) = self.__test()
+        log_message = f"(Testing) learning_rate = {best_learning_rate}; epochs = {best_epochs_value}; accuracy = {test_accuracy}; f1 = {test_f1}"
+        self.__io.append_log(log_message)
 
     def __initialize_resnet_model(self, learning_rate):
+        del self.__model
+        self.__model = keras.models.Sequential()
         self.__model.add(keras.layers.Conv2D(64, 7, strides = 2, input_shape = [50, 50, 3], padding = "same", use_bias = False))
         self.__model.add(keras.layers.BatchNormalization())
         self.__model.add(keras.layers.Activation("relu"))
@@ -172,13 +196,14 @@ class ConvolutionalNeuralNetwork:
         X_cv = np.concatenate((X_pos, X_neg), axis = 0)
         y_cv = np.hstack([y_pos, y_neg])
 
-        # Validating the model by computing accuracy and f1 metrics TODO
-        # accuracy = self.__log_reg.score(X_cv, y_cv)
-        # y_predicted = self.__log_reg.predict(X_cv)
-        # f1 = f1_score(y_cv, y_predicted)
+        # Validating the model by computing accuracy and f1 metrics
+        accuracy = self.__model.evaluate(X_cv, y_cv)
+        y_predicted_prob = self.__model.predict(X_cv)
+        y_predicted = self.__classify_predictions(y_predicted_prob)
+        f1 = self.__calculate_f1(y_predicted, y_cv)
         print("[INFO] Validation of convolutional neural network model (ResNet-34) finished.")
 
-        # return (accuracy, f1)
+        return (accuracy[1], f1)
 
     def __test(self):
         print("\n*--------------------TESTING-CONVOLUTIONAL-NEURAL-NETWORK--------------------*")
@@ -207,15 +232,17 @@ class ConvolutionalNeuralNetwork:
         print("[INFO] Tested on ", self.__test_set_positive_examples_count + self.__test_set_negative_examples_count, "examples --->", self.__test_set_positive_examples_count, "positive and", self.__test_set_negative_examples_count, "negative.")
 
         print("\n*--------------------CONVOLUTIONAL-NEURAL-NETWORK-TESTING-RESULTS--------------------*")
-        print("[INFO] Accuracy obtained on the test set:", accuracy)
+        print("[INFO] Accuracy obtained on the test set:", accuracy[1])
+        print("[INFO] Scalar test loss:", accuracy[0])
         print("[INFO] F1 score obtained on the test set:", f1)
 
         # Save output to file
         current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
         filename = "resnet_cnn_metrics_results_" + str(current_time) + ".txt"
         content = "*----RESULTS----*\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
-        # content = "*----RESULTS----*\n\naccuracy: " + str(accuracy)
-        self.__io.save_results(filename, content)
+        self.__io.save_results("cnn", filename, content)
+
+        return (accuracy[1], f1)
 
         # -----------------------------------------------------------------
         # file_path = "./output/logistic_regression_classification_results" + current_time + ".txt"
@@ -237,6 +264,10 @@ class ConvolutionalNeuralNetwork:
         return y_pred
 
     def __calculate_f1(self, y_pred, y_real):
+        '''
+        Calculates f1 score using two given vectors.
+        Returns -1 if f1 can not be calculated.
+        '''
         if len(y_pred) != len(y_real):
             return -1
 
@@ -252,18 +283,19 @@ class ConvolutionalNeuralNetwork:
             elif y_pred[i] == 1 and y_real[i] == 0:
                 false_positives += 1
 
-        if true_positives == 0 and false_positives == 0:
+        if true_positives + false_positives == 0:
             return -1
         else:
             precision = true_positives / (true_positives + false_positives)
         
-        if true_positives == 0 and false_negatives == 0:
+        if true_positives + false_negatives == 0:
             return -1
         else:
             recall = true_positives / (true_positives + false_negatives)
 
-        f1 = 2 * precision * recall / (precision + recall)
-
-        return f1
+        if precision + recall == 0:
+            return -1
+        else:
+            return 2 * precision * recall / (precision + recall)
 
 

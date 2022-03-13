@@ -59,7 +59,7 @@ class SupportVectorMachine:
         self.__svm = pickle.load(open(path, "rb"))
 
     def start_learning_process(self):
-        log_message = "*-----(LEARNING_PROCESS_STARTED)-----*"
+        log_message = "*-----(SVM_LEARNING_PROCESS_STARTED)-----*"
         self.__io.append_log(log_message)
         alpha_values = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
         best_accuracy = 0.0
@@ -67,13 +67,13 @@ class SupportVectorMachine:
         for alpha in alpha_values:
             self.__train(alpha = alpha)
             (accuracy, f1) = self.__validate()
-            log_message = "(Validation) Alpha = " + str(alpha) + " : accuracy = " + str(accuracy) + "; f1 = " + str(f1) + ";"
+            log_message = "(Validation) alpha = " + str(alpha) + "; accuracy = " + str(accuracy) + "; f1 = " + str(f1) + ";"
             self.__io.append_log(log_message)
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
                 best_alpha = alpha
 
-        print("[INFO] BEST PARAMETERS: \n   -alpha: " + str(best_alpha))
+        print("[INFO] BEST TRAINING PARAMETERS: \n   -alpha: " + str(best_alpha))
         self.__train(alpha = best_alpha)
         (test_accuracy, test_f1) = self.__test()
         log_message = "(Testing) best_alpha = " + str(best_alpha) + " : accuracy = " + str(test_accuracy) + "; f1 = " + str(test_f1) + ";"
@@ -151,9 +151,9 @@ class SupportVectorMachine:
             positive_images_processed += positive_images_batch_count
             negative_images_processed += negative_images_batch_count
 
-            self.__dirty = True
             print("[INFO] Batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative --->", positive_images_processed + negative_images_processed, "examples in total.")
 
+        self.__dirty = True
         print("[INFO] Training done.")
         print("[INFO] Total images processed:", positive_images_processed + negative_images_processed)
 

@@ -1,6 +1,6 @@
 from training.models.logistic_regression import LogististicRegression
 from training.models.multi_layer_perceptron import MultiLayerPerceptron
-#from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
+from training.models.convolutional_neural_network import ConvolutionalNeuralNetwork
 from training.models.support_vector_machine import SupportVectorMachine
 
 from sklearn.metrics import f1_score
@@ -18,7 +18,7 @@ class TrainingModule:
         self.__log_reg = LogististicRegression()
         self.__mlp = MultiLayerPerceptron()
         self.__svm = SupportVectorMachine()
-        #self.__cnn = ConvolutionalNeuralNetwork()
+        self.__cnn = ConvolutionalNeuralNetwork()
 
         self.__chosen_algorithm = chosen_algorithm
 

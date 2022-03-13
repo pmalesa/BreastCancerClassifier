@@ -15,6 +15,17 @@ class MultiLayerPerceptron:
     def __init__(self, activation = "logistic", verbose = True, random_state = 1, shuffle = True, warm_start = True):
         self.__mlp = MLPClassifier(activation = activation, verbose = verbose, random_state = random_state, shuffle = shuffle, warm_start = warm_start)
 
+        # Model parameters
+        self.__activation = activation
+        self.__verbose = verbose
+        self.__random_state = random_state
+        self.__shuffle = shuffle
+        self.__warm_start = warm_start
+        self.__iterations = 1
+        self.__hidden_layers = (5000, 5000)
+
+        self.__dirty = False
+
         self.__im = ImageManager()
         self.__io = IOManager()
 
@@ -49,24 +60,52 @@ class MultiLayerPerceptron:
         self.__mlp = pickle.load(open(path, "rb"))
         
     def start_learning_process(self):
-        self.__train()
-        self.__test()
-        # TBC - here I will test and validate the model for different hyperparameters
+        log_message = "*-----(MLP_LEARNING_PROCESS_STARTED)-----*"
+        self.__io.append_log(log_message)
+        activation_functions = ["logistic", "relu"]
+        solvers = ["sgd", "adam"]
+        alpha_values = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+
+        best_accuracy = 0.0
+        best_alpha = 0.0
+        best_activation = ""
+        best_solver = ""
+
+        for activation in activation_functions:
+            for solver in solvers:
+                for alpha in alpha_values:
+                    self.__train(activation = activation, alpha = alpha, solver = solver)
+                    (accuracy, f1) = self.__validate()
+                    log_message = "(Validation) alpha = " + str(alpha) + "; activation = " + activation + "; solver = " + solver + "; accuracy = " + str(accuracy) + "; f1 = " + str(f1) + ";"
+                    self.__io.append_log(log_message)
+                    if accuracy > best_accuracy:
+                        best_accuracy = accuracy
+                        best_alpha = alpha
+                        best_activation = activation
+                        best_solver = solver
+
+        print("[INFO] BEST TRAINING PARAMETERS:\nalpha = " + str(best_alpha) + "; activation = " + best_activation + "; solver = " + best_solver + ";")
+        self.__train(activation = best_activation, alpha = best_alpha, solver = best_solver)
+        (test_accuracy, test_f1) = self.__test()
+        log_message = "(Testing) alpha = " + str(best_alpha) + "; activation = " + best_activation + "; solver = " + best_solver + "; accuracy = " + str(test_accuracy) + "; f1 = " + str(test_f1) + ";"
+        self.__io.append_log(log_message)
 
     def __reset(self):
-        self.__mlp = MLPClassifier(activation = self.__mlp.activation, verbose = self.__mlp.verbose,
-            random_state = self.__mlp.random_state, shuffle = self.__mlp.shuffle, warm_start = self.__mlp.warm_start)
+        del self.__mlp
+        self.__mlp = MLPClassifier(activation = self.__activation, verbose = self.__verbose, random_state = self.__random_state, shuffle = self.__shuffle, warm_start = self.__warm_start)
 
-    def __train(self, regularization = 0.0001, iterations = 1000, hidden_layer = (5000, 5000), solver = "sgd"):
+    def __train(self, activation = "logistic", alpha = 0.0001, solver = "sgd"):
         print("\n*--------------------TRAINING-MLP--------------------*")
         print("[INFO] Training of multi-layer perceptron model started.")
         print("[INFO] Learning from", self.__training_set_positive_examples_count + self.__training_set_negative_examples_count, "images in total.")
 
         # Reinitialize MLPClassifier object and initialize hyperparameters
-        self.__reset()
-        self.__mlp.alpha = regularization
-        self.__mlp.max_iter = iterations
-        self.__mlp.hidden_layer_sizes = hidden_layer
+        if self.__dirty == True:
+            self.__reset()
+        self.__mlp.activation = activation
+        self.__mlp.alpha = alpha
+        self.__mlp.max_iter = self.__iterations
+        self.__mlp.hidden_layer_sizes = self.__hidden_layers
         self.__mlp.solver = solver
 
         positive_images_processed = 0
@@ -126,6 +165,7 @@ class MultiLayerPerceptron:
 
             print("[INFO] Batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative --->", positive_images_processed + negative_images_processed, "examples in total.")
 
+        self.__dirty = True
         print("[INFO] Training done.")
         print("[INFO] Total images processed:", positive_images_processed + negative_images_processed)
 
@@ -186,8 +226,10 @@ class MultiLayerPerceptron:
         # Save output to file
         current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
         filename = "mlp_metrics_results_" + str(current_time) + ".txt"
-        content = "*----RESULTS----*\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
-        self.__io.save_results(filename, content)
+        content = "*----RESULTS----*\n\nalpha = " + str(self.__mlp.alpha) + "\nactivation = " + self.__mlp.activation + "\nsolver = " + self.__mlp.solver + "\nhidden_layer = " + str(self.__mlp.hidden_layer_sizes) + "\naccuracy = " + str(accuracy) + "\nf1 = " + str(f1)
+        self.__io.save_results("mlp", filename, content)
+
+        return (accuracy, f1)
 
         # -----------------------------------------------------------------
         # file_path = "./output/mlp_classification_results" + current_time + ".txt"

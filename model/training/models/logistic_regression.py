@@ -15,6 +15,16 @@ class LogististicRegression:
     def __init__(self, loss = "log", shuffle = True, verbose = 1, eta0 = 1.0, warm_start = True):
         self.__log_reg = SGDClassifier(loss = loss, shuffle = shuffle, verbose = verbose, eta0 = eta0, warm_start = warm_start)
 
+        # Model parameters
+        self.__loss = loss
+        self.__shuffle = shuffle
+        self.__verbose = verbose
+        self.__eta0 = eta0
+        self.__warm_start = warm_start
+        self.__alpha = 0.0001
+
+        self.__dirty = False
+
         self.__im = ImageManager()
         self.__io = IOManager()
 
@@ -49,23 +59,41 @@ class LogististicRegression:
         self.__log_reg = pickle.load(open(path, "rb"))
 
     def start_learning_process(self):
-        self.__train()
-        self.__test()
-        # TBC - here I will test and validate the model for different hyperparameters
+        log_message = "*-----(LOGISTIC_REGRESSION_LEARNING_PROCESS_STARTED)-----*"
+        self.__io.append_log(log_message)
+        alpha_values = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+        best_accuracy = 0.0
+        best_alpha = 0.0
+        for alpha in alpha_values:
+            self.__train(alpha = alpha)
+            (accuracy, f1) = self.__validate()
+            log_message = "(Validation) alpha = " + str(alpha) + " : accuracy = " + str(accuracy) + "; f1 = " + str(f1) + ";"
+            self.__io.append_log(log_message)
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_alpha = alpha
+
+        print("[INFO] BEST TRAINING PARAMETERS: \n   -alpha: " + str(best_alpha))
+        self.__train(alpha = best_alpha)
+        (test_accuracy, test_f1) = self.__test()
+        log_message = "(Testing) best_alpha = " + str(best_alpha) + "; accuracy = " + str(test_accuracy) + "; f1 = " + str(test_f1) + ";"
+        self.__io.append_log(log_message)
 
     def __reset(self):
-        self.__log_reg = SGDClassifier(loss = self.__log_reg.loss, shuffle = self.__log_reg.shuffle,
-            verbose = self.__log_reg.verbose, eta0 = self.__log_reg.eta0, warm_start = self.__log_reg.warm_start)
+        del self.__log_reg
+        self.__log_reg = SGDClassifier(loss = self.__loss, shuffle = self.__shuffle, verbose = self.__verbose, eta0 = self.__eta0, warm_start = self.__warm_start)
 
-    def __train(self, learning_rate = "optimal", regularization = 0.0001, iterations = 1000):
+    def __train(self, learning_rate = "optimal", alpha = 0.0001, iterations = 1000):
         print("\n*--------------------TRAINING-LOGISTIC-REGRESSION--------------------*")
         print("[INFO] Training of logistic regression model started.")
         print("[INFO] Learning from", self.__training_set_positive_examples_count + self.__training_set_negative_examples_count, "images in total.")
 
         # Reinitialize SGDClassifier object and initialize hyperparameters
-        self.__reset()
+        if self.__dirty == True:
+            self.__reset()
         self.__log_reg.learning_rate = learning_rate
-        self.__log_reg.alpha = regularization
+        self.__alpha = alpha
+        self.__log_reg.alpha = alpha
         self.__log_reg.max_iter = iterations
 
         positive_images_processed = 0
@@ -124,7 +152,8 @@ class LogististicRegression:
             negative_images_processed += negative_images_batch_count
 
             print("[INFO] Batch of", positive_images_batch_count + negative_images_batch_count, "examples --->", positive_images_batch_count, "positive and", negative_images_batch_count, "negative --->", positive_images_processed + negative_images_processed, "examples in total.")
-
+        
+        self.__dirty = True
         print("[INFO] Training done.")
         print("[INFO] Total images processed:", positive_images_processed + negative_images_processed)
 
@@ -184,9 +213,11 @@ class LogististicRegression:
 
         # Save output to file
         current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
-        filename = "logistic_regression_metrics_results_" + str(current_time) + ".txt"
-        content = "*----RESULTS----*\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
-        self.__io.save_results(filename, content)
+        filename = "logistic_regression_metrics_results_" + str(current_time) + "_" + str(self.__alpha) + ".txt"
+        content = "*----RESULTS----*\n\nregularization = " + str(self.__alpha) + "\n\nF1: " + str(f1) + "\naccuracy: " + str(accuracy)
+        self.__io.save_results("logistic_regression", filename, content)
+
+        return (accuracy, f1)
 
         # -----------------------------------------------------------------
         # file_path = "./output/logistic_regression_classification_results" + current_time + ".txt"
