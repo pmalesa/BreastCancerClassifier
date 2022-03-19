@@ -40,8 +40,11 @@ class ConvolutionalNeuralNetwork:
     def __init__(self):
         self.__model = keras.models.Sequential()
 
+        self.__dirty = False
+
         self.__im = ImageManager()
         self.__io = IOManager()
+
 
         # self.__positive_examples_count = self.__im.get_positive_examples_count()
         # self.__negative_examples_count = self.__im.get_negative_examples_count()
@@ -76,33 +79,44 @@ class ConvolutionalNeuralNetwork:
     def start_learning_process(self):
         log_message = "*-----(CNN_LEARNING_PROCESS_STARTED)-----*"
         self.__io.append_log(log_message)
-        learning_rates = [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0 ]
-        epochs_values = [ 10, 20, 50, 100]
 
-        best_accuracy = 0.0
-        best_learning_rate = 0.0
-        best_epochs_value = 0
-
-        for learning_rate in learning_rates:
-            for epochs in epochs_values:
-                self.__train(learning_rate = learning_rate, epochs = epochs)
-                (accuracy, f1) = self.__validate()
-                log_message = f"(Validation) learning_rate = {learning_rate}; epochs = {epochs}; accuracy = {accuracy}; f1 = {f1}" 
-                self.__io.append_log(log_message)
-                if accuracy > best_accuracy:
-                    best_accuracy = accuracy
-                    best_learning_rate = learning_rate
-                    best_epochs_value = epochs
-
-        print(f"[INFO] BEST TRAINING PARAMETERS:\nlearning_rate = {best_learning_rate}; epochs = {epochs}")
-        self.__train(learning_rate = best_learning_rate, epochs = best_epochs_value)
+        self.__train(learning_rate = 0.01, epochs = 10)
         (test_accuracy, test_f1) = self.__test()
-        log_message = f"(Testing) learning_rate = {best_learning_rate}; epochs = {best_epochs_value}; accuracy = {test_accuracy}; f1 = {test_f1}"
+
+        log_message = f"(Testing on cleaned data) learning_rate = 0.01; epochs = 10; accuracy = {test_accuracy}; f1 = {test_f1}"
         self.__io.append_log(log_message)
 
+
+        # self.__io.append_log(log_message)
+        # learning_rates = [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0 ]
+        # epochs_values = [ 10, 20, 50, 100]
+
+        # best_accuracy = 0.0
+        # best_learning_rate = 0.0
+        # best_epochs_value = 0
+
+        # for learning_rate in learning_rates:
+        #     for epochs in epochs_values:
+        #         self.__train(learning_rate = learning_rate, epochs = epochs)
+        #         (accuracy, f1) = self.__validate()
+        #         log_message = f"(Validation) learning_rate = {learning_rate}; epochs = {epochs}; accuracy = {accuracy}; f1 = {f1}" 
+        #         self.__io.append_log(log_message)
+        #         if accuracy > best_accuracy:
+        #             best_accuracy = accuracy
+        #             best_learning_rate = learning_rate
+        #             best_epochs_value = epochs
+
+        # print(f"[INFO] BEST TRAINING PARAMETERS:\nlearning_rate = {best_learning_rate}; epochs = {epochs}")
+        # self.__train(learning_rate = best_learning_rate, epochs = best_epochs_value)
+        # (test_accuracy, test_f1) = self.__test()
+        # log_message = f"(Testing) learning_rate = {best_learning_rate}; epochs = {best_epochs_value}; accuracy = {test_accuracy}; f1 = {test_f1}"
+        # self.__io.append_log(log_message)
+
     def __initialize_resnet_model(self, learning_rate):
-        del self.__model
-        self.__model = keras.models.Sequential()
+        if self.__dirty == True:
+            del self.__model
+            self.__model = keras.models.Sequential()
+            
         self.__model.add(keras.layers.Conv2D(64, 7, strides = 2, input_shape = [50, 50, 3], padding = "same", use_bias = False))
         self.__model.add(keras.layers.BatchNormalization())
         self.__model.add(keras.layers.Activation("relu"))
@@ -170,6 +184,8 @@ class ConvolutionalNeuralNetwork:
 
             # Learning from batch
             history = self.__model.fit(X_training, y_training, epochs = epochs, shuffle = True)
+
+            self.__dirty = True
 
             positive_images_processed += positive_images_batch_count
             negative_images_processed += negative_images_batch_count

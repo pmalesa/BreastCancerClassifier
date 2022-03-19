@@ -32,7 +32,72 @@ class ImageManager:
     def get_number_of_files(self, dir):
         path, dirs, files = next(os.walk(dir))
         return len(files)
-    
+
+    def delete_found_corrupted_images(self, dir, corrupted_files):
+        file = open(corrupted_files, "r")
+        lines = file.readlines()
+        file_count = 0
+
+        for line in lines:
+            file_count += 1
+            path = dir + "/" + line
+            os.remove(path.strip())
+        print(f"Deleted {file_count} files.")
+
+    def save_corrupted_images(self, dir, output):
+        f = []
+        boundary = 215.0
+
+        # Get directory and file names
+        print(dir)
+        for (dirpath, dirnames, filenames) in walk(dir):
+            f.extend(filenames)
+            break
+
+        for filename in filenames:
+            if self.__is_corrupted(dir + "/" + filename):
+                print(filename)
+                image = Image.open(dir + "/" + filename)
+                with open(output, 'a+') as f:
+                    f.write(filename + "\n")
+
+    def delete_corrupted_images(self, dir):
+        f = []
+        
+        # Get directory and file names
+        for (dirpath, dirnames, filenames) in walk(dir):
+            f.extend(filenames)
+            break
+
+        for filename in filenames:
+            path = dir + "/" + filename
+            if self.__is_corrupted(path):
+                os.remove(path)
+
+
+    def __is_corrupted(self, filename):
+        pixel_colors = self.get_pixel_colors(filename)
+
+        max_pixels = 2500
+        wrong_pixels = 0
+        threshold= 0.1
+        pixel_val_tolerance = 10.0
+
+        for i in range(0, pixel_colors.shape[0]):
+            for j in range(0, pixel_colors.shape[1]):
+                r = pixel_colors[i][j][0] * 255
+                g = pixel_colors[i][j][1] * 255
+                b = pixel_colors[i][j][2] * 255
+
+                if abs(r - g) < pixel_val_tolerance and abs(r - b) < pixel_val_tolerance and abs(g - b) < pixel_val_tolerance:
+                    if (r + g + b) / 3 < 170.0:
+                        wrong_pixels += 1
+
+        if (wrong_pixels / max_pixels) > threshold:
+            return True
+        else:
+            return False
+
     def save_wrong_sized_images(self, dir, output):
         f = []
         
@@ -293,3 +358,28 @@ class ImageManager:
             return False
         else:
             return True 
+
+
+
+
+
+
+    # CLEANING DATA FROM CORRUPTED IMAGES
+
+    # im = ImageManager()
+    # output = "./images/corrupted_0_images.txt"
+
+    # dir = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized_BACKUP/0"
+    # im.delete_corrupted_images(dir)
+
+    # dir = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized_BACKUP/1"
+    # im.delete_corrupted_images(dir)
+
+    # dir = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized_BACKUP/1"
+    # corrupted_files = "./images/corrupted_1_images.txt"
+    # im.delete_found_corrupted_images(dir, corrupted_files)
+
+    # src_dir = "../../../Praca_Inzynierska/Breast_Histopathology_Images_Categorized_BACKUP"
+    # dest_dir = "../../../Praca_Inzynierska/CLEANED_IMAGES"
+
+    # im.divide_into_categories(src_dir, dest_dir)

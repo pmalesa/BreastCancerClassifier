@@ -3,7 +3,7 @@ from training.training_module import TrainingModule
 def main():
     tm = TrainingModule("cnn")
     tm.run()
-    #tm.save_chosen_model()
+    # tm.save_chosen_model()
 
     return 0
 
@@ -17,8 +17,11 @@ if __name__ == "__main__":
 # - think about getting rid of ImageManager and IOManager objects from each model
 # - use grid search (with Scikit learn's class or not) for cross validation and finding the optimal hyperparameters
 
-# - CROSSVALIDATE THE CNN WITH THE ARGUMENTS PASSED TO FIT FUNCTION
-
+# - CROSSVALIDATE ALL THE MODELS AFTER CLEANING THE DATA:
+#    1) Crossvalidate all the models for the best hyperparameters, train them with those hyperparameters and note the results (accuracy + f1),
+#    2) Training CNN gives different results, so firstly You will have to crossvalidate it for the best hyperparameters and then
+#       train it few more times with the best hyperparameters and choose the best result as the final model (not sure about this !!!)
+#       I think it is true, the results differ, even if the hyperparameters are the same
 
 
 
