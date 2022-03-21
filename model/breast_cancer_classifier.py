@@ -3,7 +3,7 @@ from training.training_module import TrainingModule
 def main():
     tm = TrainingModule("cnn")
     tm.run()
-    # tm.save_chosen_model()
+    tm.save_chosen_model()
 
     return 0
 

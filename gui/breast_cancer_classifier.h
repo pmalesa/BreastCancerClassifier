@@ -26,6 +26,16 @@ private slots:
     void normalSize();
     void about();
 
+    void on_selectImageButton_released();
+
+    void on_zoomInButton_released();
+
+    void on_zoomOutButton_released();
+
+    void on_resetButton_released();
+
+    void on_testButton_released();
+
 private:
     void initializeImageFileDialog(QFileDialog& dialog, QFileDialog::AcceptMode acceptMode);
     bool loadFile(const QString& filename);
