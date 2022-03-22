@@ -3,9 +3,11 @@
 
 #include <QMainWindow>
 #include <QImage>
+#include <QPainter>
 #include <QLabel>
 #include <QScrollArea>
 #include <QFileDialog>
+#include <QImageReader>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class BreastCancerClassifier; }
@@ -36,6 +38,14 @@ private slots:
 
     void on_testButton_released();
 
+    void on_moveUpButton_released();
+
+    void on_moveRightButton_released();
+
+    void on_moveDownButton_released();
+
+    void on_moveLeftButton_released();
+
 private:
     void initializeImageFileDialog(QFileDialog& dialog, QFileDialog::AcceptMode acceptMode);
     bool loadFile(const QString& filename);
@@ -44,10 +54,18 @@ private:
     void setImage(const QImage& newImage);
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar* scrollBar, double factor);
+    void refreshSelectionFrame();
 
     Ui::BreastCancerClassifier* ui_;
+    QImageReader reader_;
     QImage image_;
+    QImage selectionFrame_;
+    QString selectionFramePath_;
+    QPainter painter_;
+    QPixmap pixmap_;
     QLabel* imageLabel_;
+    int selectionFrameX_;
+    int selectionFrameY_;
     QScrollArea* scrollArea_;
     double scaleFactor_ = 1;
 

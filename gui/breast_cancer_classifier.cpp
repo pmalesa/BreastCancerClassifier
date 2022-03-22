@@ -3,21 +3,30 @@
 
 #include <QScreen>
 #include <QStandardPaths>
-#include <QImageReader>
 #include <QImageWriter>
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QColorSpace>
+#include <QPainter>
 
 #include <iostream>
 
 BreastCancerClassifier::BreastCancerClassifier(QWidget *parent)
-    : QMainWindow(parent), ui_(new Ui::BreastCancerClassifier)
+    : QMainWindow(parent), ui_(new Ui::BreastCancerClassifier),
+      selectionFramePath_("../test_images/selection_frame.png")
 {
     ui_->setupUi(this);
 
     imageLabel_ = ui_->imageLabel;
     scrollArea_ = ui_->scrollArea;
+
+    reader_.setFileName(selectionFramePath_);
+    reader_.setAutoTransform(true);
+    selectionFrame_ = reader_.read();
+    if (selectionFrame_.colorSpace().isValid())
+        selectionFrame_.convertToColorSpace(QColorSpace::SRgb);
+    selectionFrameX_ = 0;
+    selectionFrameY_ = 0;
 
     imageLabel_->setBackgroundRole(QPalette::Base);
     imageLabel_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -100,14 +109,15 @@ void BreastCancerClassifier::initializeImageFileDialog(QFileDialog& dialog, QFil
 
 bool BreastCancerClassifier::loadFile(const QString& filename)
 {
-    QImageReader reader(filename);
-    reader.setAutoTransform(true);
-    const QImage newImage = reader.read();
+//    QImageReader reader(filename);
+    reader_.setFileName(filename);
+    reader_.setAutoTransform(true);
+    const QImage newImage = reader_.read();
     if (newImage.isNull())
     {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Cannot load %1: %2")
-                                 .arg(QDir::toNativeSeparators(filename), reader.errorString()));
+                                 .arg(QDir::toNativeSeparators(filename), reader_.errorString()));
         return false;
     }
 
@@ -168,7 +178,18 @@ void BreastCancerClassifier::setImage(const QImage& newImage)
     if (image_.colorSpace().isValid())
         image_.convertToColorSpace(QColorSpace::SRgb);
 
-    imageLabel_->setPixmap(QPixmap::fromImage(image_));
+    pixmap_ = QPixmap::fromImage(image_);
+
+    painter_.begin(&pixmap_);
+    painter_.drawImage(0, 0, image_);
+
+    selectionFrameX_ = image_.size().width() / 2 - selectionFrame_.size().width() / 2;
+    selectionFrameY_ = image_.size().height() / 2 - selectionFrame_.size().height() / 2;
+
+    painter_.drawImage(selectionFrameX_, selectionFrameY_, selectionFrame_);
+    painter_.end();
+
+    imageLabel_->setPixmap(pixmap_);
 
     scaleFactor_ = 1.0;
     imageLabel_->setVisible(true);
@@ -196,10 +217,14 @@ void BreastCancerClassifier::adjustScrollBar(QScrollBar* scrollBar, double facto
                             + ((factor - 1) * scrollBar->pageStep() / 2)));
 }
 
-
-
-
-
+void BreastCancerClassifier::refreshSelectionFrame()
+{
+    painter_.begin(&pixmap_);
+    painter_.drawImage(0, 0, image_);
+    painter_.drawImage(selectionFrameX_, selectionFrameY_, selectionFrame_);
+    painter_.end();
+    imageLabel_->setPixmap(pixmap_);
+}
 
 void BreastCancerClassifier::on_selectImageButton_released()
 {
@@ -223,9 +248,8 @@ void BreastCancerClassifier::on_resetButton_released()
 
 void BreastCancerClassifier::on_testButton_released()
 {
-    QRect rect(175, 175, 50, 50);
+    QRect rect(selectionFrameX_ + 5, selectionFrameY_ + 5, 50, 50);
     imageLabel_->size().width();
-//    std::cout << scrollArea_->horizontalScrollBar()->sliderPosition() << "\n" << scrollArea_->verticalScrollBar()->sliderPosition() << "\n";
     QImage cropped = imageLabel_->pixmap(Qt::ReturnByValue).toImage().copy(rect);
     cropped.save("cropped_image.png");
 
@@ -240,4 +264,28 @@ void BreastCancerClassifier::on_testButton_released()
         Right now you are cropping only the 50x50 square which is located 175 pixels to the bottom right of the point (0, 0), which
         is located in the upper left corner.
     */
+}
+
+void BreastCancerClassifier::on_moveUpButton_released()
+{
+    selectionFrameY_ -= 10;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveRightButton_released()
+{
+    selectionFrameX_ += 10;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveDownButton_released()
+{
+    selectionFrameY_ += 10;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveLeftButton_released()
+{
+    selectionFrameX_ -= 10;
+    refreshSelectionFrame();
 }
