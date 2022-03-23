@@ -37,6 +37,14 @@ BreastCancerClassifier::BreastCancerClassifier(QWidget *parent)
     imageLabel_->setVisible(false);
     scrollArea_->setVisible(true);
     createActions();
+
+    ui_->imageNavigationGroupBox->setEnabled(false);
+    ui_->classifyButton->setEnabled(false);
+    ui_->saveSelectionButton->setEnabled(false);
+    ui_->resetButton->setEnabled(false);
+    ui_->zoomInButton->setEnabled(false);
+    ui_->zoomOutButton->setEnabled(false);
+    ui_->unselectImageButton->setEnabled(false);
 }
 
 BreastCancerClassifier::~BreastCancerClassifier()
@@ -109,14 +117,29 @@ void BreastCancerClassifier::initializeImageFileDialog(QFileDialog& dialog, QFil
 
 bool BreastCancerClassifier::loadFile(const QString& filename)
 {
-//    QImageReader reader(filename);
     reader_.setFileName(filename);
     reader_.setAutoTransform(true);
     const QImage newImage = reader_.read();
     if (newImage.isNull())
     {
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+        QMessageBox::warning(this, QString("BreastCancerClassifier"),
                                  tr("Cannot load %1: %2")
+                                 .arg(QDir::toNativeSeparators(filename), reader_.errorString()));
+        return false;
+    }
+
+    if (newImage.size().width() > imageMaxSize_ || newImage.size().height() > imageMaxSize_)
+    {
+        QMessageBox::warning(this, QString("BreastCancerClassifier"),
+                                 tr("Loaded image is too wide or tall. Maximum width and height allowed is 1000 pixels.")
+                                 .arg(QDir::toNativeSeparators(filename), reader_.errorString()));
+        return false;
+    }
+
+    if (newImage.size().width() < imageMinSize_ || newImage.size().height() < imageMinSize_)
+    {
+        QMessageBox::warning(this, QString("BreastCancerClassifier"),
+                                 tr("Loaded image is too small. Minimal width and height allowed is 50 pixels.")
                                  .arg(QDir::toNativeSeparators(filename), reader_.errorString()));
         return false;
     }
@@ -124,6 +147,7 @@ bool BreastCancerClassifier::loadFile(const QString& filename)
     setImage(newImage);
     normalSize();
     setWindowFilePath(filename);
+    ui_->selectedImageLineEdit->setText(filename);
 
     const QString message = tr("Opened \"%1\", %2x%3, Depth: %4")
         .arg(QDir::toNativeSeparators(filename)).arg(image_.width()).arg(image_.height()).arg(image_.depth());
@@ -180,20 +204,50 @@ void BreastCancerClassifier::setImage(const QImage& newImage)
 
     pixmap_ = QPixmap::fromImage(image_);
 
-    painter_.begin(&pixmap_);
-    painter_.drawImage(0, 0, image_);
+    /* Determining initial position of the selection frame */
+    if (image_.size() != QSize(imageMinSize_, imageMinSize_))
+    {
+        backgroundPixmap_ = QPixmap(image_.width() + 2 * selectionFrameWidth_, image_.height() + 2 * selectionFrameWidth_);
 
-    selectionFrameX_ = image_.size().width() / 2 - selectionFrame_.size().width() / 2;
-    selectionFrameY_ = image_.size().height() / 2 - selectionFrame_.size().height() / 2;
-
-    painter_.drawImage(selectionFrameX_, selectionFrameY_, selectionFrame_);
-    painter_.end();
-
-    imageLabel_->setPixmap(pixmap_);
+        if (image_.width() - selectionAreaSize_ <= selectionFrameWidth_ && image_.height() - selectionAreaSize_ <= selectionFrameWidth_)
+        {
+            selectionFrameX_ = 0;
+            selectionFrameY_ = 0;
+        }
+        else if (image_.width() - selectionAreaSize_ < selectionFrameWidth_ && image_.height() - selectionAreaSize_ >= selectionFrameWidth_)
+        {
+            selectionFrameX_ = 0;
+            selectionFrameY_ = backgroundPixmap_.height() / 2 - selectionAreaSize_ / 2;
+        }
+        else if (image_.width() - selectionAreaSize_ >= selectionFrameWidth_ && image_.height() - selectionAreaSize_ < selectionFrameWidth_)
+        {
+            selectionFrameX_ = backgroundPixmap_.width() / 2 - selectionAreaSize_ / 2;
+            selectionFrameY_ = 0;
+        }
+        else
+        {
+            selectionFrameX_ = backgroundPixmap_.width() / 2 - selectionAreaSize_ / 2;
+            selectionFrameY_ = backgroundPixmap_.height() / 2 - selectionAreaSize_ / 2;
+        }
+        refreshSelectionFrame();
+        ui_->imageNavigationGroupBox->setEnabled(true);
+    }
+    else
+    {
+        selectionFrameX_ = -selectionFrameWidth_;
+        selectionFrameY_ = -selectionFrameWidth_;
+        imageLabel_->setPixmap(pixmap_);
+    }
 
     scaleFactor_ = 1.0;
     imageLabel_->setVisible(true);
     updateActions();
+    ui_->classifyButton->setEnabled(true);
+    ui_->saveSelectionButton->setEnabled(true);
+    ui_->resetButton->setEnabled(true);
+    ui_->zoomInButton->setEnabled(true);
+    ui_->zoomOutButton->setEnabled(true);
+    ui_->unselectImageButton->setEnabled(true);
 }
 
 void BreastCancerClassifier::scaleImage(double factor)
@@ -219,11 +273,12 @@ void BreastCancerClassifier::adjustScrollBar(QScrollBar* scrollBar, double facto
 
 void BreastCancerClassifier::refreshSelectionFrame()
 {
-    painter_.begin(&pixmap_);
-    painter_.drawImage(0, 0, image_);
+    painter_.begin(&backgroundPixmap_);
+    painter_.fillRect(backgroundPixmap_.rect(), Qt::gray);
+    painter_.drawImage(selectionFrameWidth_, selectionFrameWidth_, image_);
     painter_.drawImage(selectionFrameX_, selectionFrameY_, selectionFrame_);
     painter_.end();
-    imageLabel_->setPixmap(pixmap_);
+    imageLabel_->setPixmap(backgroundPixmap_);
 }
 
 void BreastCancerClassifier::on_selectImageButton_released()
@@ -244,48 +299,111 @@ void BreastCancerClassifier::on_zoomOutButton_released()
 void BreastCancerClassifier::on_resetButton_released()
 {
     normalSize();
-}
-
-void BreastCancerClassifier::on_testButton_released()
-{
-    QRect rect(selectionFrameX_ + 5, selectionFrameY_ + 5, 50, 50);
-    imageLabel_->size().width();
-    QImage cropped = imageLabel_->pixmap(Qt::ReturnByValue).toImage().copy(rect);
-    cropped.save("cropped_image.png");
-
-    /*
-        Think about how to crop the middle 50x50 square of the viewed image - not the middle 50x50 square of the whole image.
-        You must make the cropping work with the scrolling of the image, because right now you are always cropping the middle
-        square, regardless of the displayed part of an image.
-
-        Make a yellow/orange/red square denoting which part of the displayed image will be cropped. Make it resizable when
-        zooming in or out.
-
-        Right now you are cropping only the 50x50 square which is located 175 pixels to the bottom right of the point (0, 0), which
-        is located in the upper left corner.
-    */
+    if (image_.size() != QSize(imageMinSize_, imageMinSize_))
+    {
+        selectionFrameX_ = backgroundPixmap_.width() / 2 - selectionAreaSize_ / 2;
+        selectionFrameY_ = backgroundPixmap_.height() / 2 - selectionAreaSize_ / 2;
+        refreshSelectionFrame();
+        ui_->imageNavigationGroupBox->setEnabled(true);
+    }
 }
 
 void BreastCancerClassifier::on_moveUpButton_released()
 {
-    selectionFrameY_ -= 10;
+    selectionFrameY_ -= 1;
+    if (selectionFrameY_ < 0)
+        selectionFrameY_ = 0;
     refreshSelectionFrame();
 }
 
 void BreastCancerClassifier::on_moveRightButton_released()
 {
-    selectionFrameX_ += 10;
+    selectionFrameX_ += 1;
+    if (selectionFrameX_ + selectionAreaSize_ > image_.size().width() )
+        selectionFrameX_ = image_.size().width() - selectionAreaSize_;
     refreshSelectionFrame();
 }
 
 void BreastCancerClassifier::on_moveDownButton_released()
 {
-    selectionFrameY_ += 10;
+    selectionFrameY_ += 1;
+    if (selectionFrameY_ + selectionAreaSize_ > image_.size().height() )
+        selectionFrameY_ = image_.size().height() - selectionAreaSize_;
     refreshSelectionFrame();
 }
 
 void BreastCancerClassifier::on_moveLeftButton_released()
 {
-    selectionFrameX_ -= 10;
+    selectionFrameX_ -= 1;
+    if (selectionFrameX_ < 0)
+        selectionFrameX_ = 0;
     refreshSelectionFrame();
 }
+
+void BreastCancerClassifier::on_saveSelectionButton_released()
+{
+    QRect rect(selectionFrameX_ + 5, selectionFrameY_ + 5, 50, 50);
+    imageLabel_->size().width();
+    QImage cropped = imageLabel_->pixmap(Qt::ReturnByValue).toImage().copy(rect);
+    cropped.save("selected_image.png");
+}
+
+void BreastCancerClassifier::on_moveRightButton_2_released()
+{
+    selectionFrameX_ += 20;
+    if (selectionFrameX_ + selectionAreaSize_ > image_.size().width() )
+        selectionFrameX_ = image_.size().width() - selectionAreaSize_;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveDownButton_2_released()
+{
+    selectionFrameY_ += 20;
+    if (selectionFrameY_ + selectionAreaSize_ > image_.size().height() )
+        selectionFrameY_ = image_.size().height() - selectionAreaSize_;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveLeftButton_2_released()
+{
+    selectionFrameX_ -= 20;
+    if (selectionFrameX_ < 0)
+        selectionFrameX_ = 0;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_moveUpButton_2_released()
+{
+    selectionFrameY_ -= 20;
+    if (selectionFrameY_ < 0)
+        selectionFrameY_ = 0;
+    refreshSelectionFrame();
+}
+
+void BreastCancerClassifier::on_unselectImageButton_released()
+{
+    ui_->selectedImageLineEdit->setText("");
+    image_ = QImage();
+    pixmap_ = QPixmap();
+    imageLabel_->setVisible(false);
+    ui_->imageNavigationGroupBox->setEnabled(false);
+    ui_->classifyButton->setEnabled(false);
+    ui_->saveSelectionButton->setEnabled(false);
+    ui_->resetButton->setEnabled(false);
+    ui_->zoomInButton->setEnabled(false);
+    ui_->zoomOutButton->setEnabled(false);
+    ui_->unselectImageButton->setEnabled(false);
+}
+
+
+
+/*
+    REMARKS:
+
+    Cover the case when the image is for example 50x51 pixels - in such case we will see a little bit of the selection frame.
+    (THINK ABOUT HOW TO SOLVE IT!!!)
+
+    In case of 50x50 pixels images the selection frame is loaded, but it is not visible - you can leave it this way.
+
+    Maybe find a way to continuously move the image, not in 20 pixel steps.
+*/

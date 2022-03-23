@@ -36,8 +36,6 @@ private slots:
 
     void on_resetButton_released();
 
-    void on_testButton_released();
-
     void on_moveUpButton_released();
 
     void on_moveRightButton_released();
@@ -45,6 +43,18 @@ private slots:
     void on_moveDownButton_released();
 
     void on_moveLeftButton_released();
+
+    void on_saveSelectionButton_released();
+
+    void on_moveRightButton_2_released();
+
+    void on_moveDownButton_2_released();
+
+    void on_moveLeftButton_2_released();
+
+    void on_moveUpButton_2_released();
+
+    void on_unselectImageButton_released();
 
 private:
     void initializeImageFileDialog(QFileDialog& dialog, QFileDialog::AcceptMode acceptMode);
@@ -59,10 +69,15 @@ private:
     Ui::BreastCancerClassifier* ui_;
     QImageReader reader_;
     QImage image_;
+    const int imageMaxSize_ = 1000;
+    const int imageMinSize_ = 50;
     QImage selectionFrame_;
     QString selectionFramePath_;
+    const int selectionAreaSize_ = 50;
+    const int selectionFrameWidth_ = 5;
     QPainter painter_;
     QPixmap pixmap_;
+    QPixmap backgroundPixmap_;
     QLabel* imageLabel_;
     int selectionFrameX_;
     int selectionFrameY_;
