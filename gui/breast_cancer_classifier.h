@@ -9,6 +9,8 @@
 #include <QFileDialog>
 #include <QImageReader>
 
+#include "pyhelper.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class BreastCancerClassifier; }
 QT_END_NAMESPACE
@@ -56,6 +58,8 @@ private slots:
 
     void on_unselectImageButton_released();
 
+    void on_classifyButton_released();
+
 private:
     void initializeImageFileDialog(QFileDialog& dialog, QFileDialog::AcceptMode acceptMode);
     bool loadFile(const QString& filename);
@@ -65,6 +69,13 @@ private:
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar* scrollBar, double factor);
     void refreshSelectionFrame();
+
+    CPyObject pArgs;
+    CPyObject pValue;
+    CPyObject pFunc;
+    CPyObject pModule;
+    CPyObject pName;
+    CPyInstance pInstance;
 
     Ui::BreastCancerClassifier* ui_;
     QImageReader reader_;

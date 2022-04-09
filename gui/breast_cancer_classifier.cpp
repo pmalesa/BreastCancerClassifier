@@ -1,6 +1,11 @@
 ﻿#include "breast_cancer_classifier.h"
 #include "./ui_breast_cancer_classifier.h"
 
+#include <string>
+#include <sstream>
+#include <iostream>
+#include <cmath>
+
 #include <QScreen>
 #include <QStandardPaths>
 #include <QImageWriter>
@@ -9,12 +14,24 @@
 #include <QColorSpace>
 #include <QPainter>
 
-#include <iostream>
 
 BreastCancerClassifier::BreastCancerClassifier(QWidget *parent)
     : QMainWindow(parent), ui_(new Ui::BreastCancerClassifier),
-      selectionFramePath_("../test_images/selection_frame.png")
+      selectionFramePath_("../images/selection_frame.png")
 {
+    /* Initialization of Python embedding */
+    pName = PyUnicode_FromString("classify_image");
+    pModule = PyImport_Import(pName);
+    if (pModule)
+    {
+        pFunc = PyObject_GetAttrString(pModule, "classify");
+    }
+    else
+    {
+        QMessageBox::warning(this, QString("BreastCancerClassifier"),
+                                 tr("ERROR: Module could not be imported."));
+    }
+
     ui_->setupUi(this);
 
     imageLabel_ = ui_->imageLabel;
@@ -50,6 +67,7 @@ BreastCancerClassifier::BreastCancerClassifier(QWidget *parent)
 BreastCancerClassifier::~BreastCancerClassifier()
 {
     delete ui_;
+    Py_Finalize();
 }
 
 void BreastCancerClassifier::open()
@@ -399,11 +417,33 @@ void BreastCancerClassifier::on_unselectImageButton_released()
 
 /*
     REMARKS:
-
-    Cover the case when the image is for example 50x51 pixels - in such case we will see a little bit of the selection frame.
-    (THINK ABOUT HOW TO SOLVE IT!!!)
-
-    In case of 50x50 pixels images the selection frame is loaded, but it is not visible - you can leave it this way.
-
-    Maybe find a way to continuously move the image, not in 20 pixel steps.
+    - Maybe find a way to continuously move the image, not in 20 pixel steps.
 */
+
+
+
+void BreastCancerClassifier::on_classifyButton_released()
+{
+    on_saveSelectionButton_released();
+    if (pFunc && PyCallable_Check(pFunc))
+    {
+        pValue = PyObject_CallObject(pFunc, NULL);
+        double predictionValue = PyFloat_AsDouble(pValue);
+        predictionValue = std::ceil(predictionValue * 10000.0) / 100.0;
+        if (predictionValue <= 33.3)
+            ui_->resultsTextBrowser->setTextColor(Qt::green);
+        else if (predictionValue > 33.3 && predictionValue <= 66.6)
+            ui_->resultsTextBrowser->setTextColor(Qt::yellow);
+        else
+            ui_->resultsTextBrowser->setTextColor(Qt::red);
+        std::ostringstream strs;
+        strs << predictionValue;
+        std::string valueStr = strs.str();
+        valueStr += "%";
+        ui_->resultsTextBrowser->setText(QString(valueStr.c_str()));
+    }
+    else
+    {
+        std::cout << "Error occurred while calling Python's classify() function.\n";
+    }
+}

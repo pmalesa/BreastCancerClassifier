@@ -255,7 +255,6 @@ v</string>
     <property name="font">
      <font>
       <pointsize>20</pointsize>
-      <weight>75</weight>
       <bold>true</bold>
      </font>
     </property>
@@ -275,7 +274,6 @@ v</string>
     <property name="font">
      <font>
       <pointsize>20</pointsize>
-      <weight>75</weight>
       <italic>false</italic>
       <bold>true</bold>
      </font>
@@ -318,6 +316,12 @@ v</string>
        <height>91</height>
       </rect>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>20</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
     </widget>
    </widget>
   </widget>
@@ -327,7 +331,7 @@ v</string>
      <x>0</x>
      <y>0</y>
      <width>804</width>
-     <height>21</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

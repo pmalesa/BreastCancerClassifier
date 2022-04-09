@@ -11,6 +11,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
 # Check https://doc.qt.io/qt/deployment-android.html for more information.
 # They need to be set before the find_package( ...) calls below.
@@ -26,11 +27,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development NumPy)
 
 set(PROJECT_SOURCES
         main.cpp
         breast_cancer_classifier.cpp
         breast_cancer_classifier.h
+        pyhelper.h
         breast_cancer_classifier.ui
 )
 
@@ -50,4 +55,6 @@ else()
     endif()
 endif()
 
-target_link_libraries(gui PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+include_directories(${Python3_INCLUDE_DIRS})
+
+target_link_libraries(gui PRIVATE Qt${QT_VERSION_MAJOR}::Widgets ${Python3_LIBRARIES})
