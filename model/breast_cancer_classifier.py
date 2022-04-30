@@ -3,7 +3,7 @@ from training.training_module import TrainingModule
 def main():
     tm = TrainingModule("cnn")
     tm.run()
-    tm.save_chosen_model()
+    # tm.save_chosen_model()
 
     return 0
 
@@ -13,15 +13,12 @@ if __name__ == "__main__":
 
 
 # Remarks:
-
-# - think about getting rid of ImageManager and IOManager objects from each model
-# - use grid search (with Scikit learn's class or not) for cross validation and finding the optimal hyperparameters
-
-# - CROSSVALIDATE ALL THE MODELS AFTER CLEANING THE DATA:
-#    1) Crossvalidate all the models for the best hyperparameters, train them with those hyperparameters and note the results (accuracy + f1),
-#    2) Training CNN gives different results, so firstly You will have to crossvalidate it for the best hyperparameters and then
-#       train it few more times with the best hyperparameters and choose the best result as the final model (not sure about this !!!)
-#       I think it is true, the results differ, even if the hyperparameters are the same
+# - DATA AUGMENTATION - Implement rotating each image in the loaded batch (if batch size is 1000 then you will have 4000 examples in total), and use all of the created images
+#   to train the model + some gaussian noise or random noise (https://www.kaggle.com/code/zeadomar/breast-cancer-detection-with-cnn)
+# - Deal with the biased dataset, either think about those weights for each class (Weight balancing), or use different approach,
+# - Expand the ResNet-34 model, so that maybe it will perform better (maybe use ResNet-18 before the main model as Nathan suggested).
+# - Also, maybe think about those number of steps within each epoch (one step corresponds to one batch of loaded samples, so if your batch is 1000, then it also can be splitted
+#   into smaller batches - by default you have 32 steps per each epoch, which means that your batch size is 32 within each 'bigger' batch - see the keras documentation for more).
 
 
 

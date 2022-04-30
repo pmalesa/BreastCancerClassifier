@@ -80,7 +80,7 @@ class ImageManager:
 
         max_pixels = 2500
         wrong_pixels = 0
-        threshold= 0.1
+        threshold = 0.1
         pixel_val_tolerance = 10.0
 
         for i in range(0, pixel_colors.shape[0]):

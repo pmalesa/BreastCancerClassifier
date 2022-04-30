@@ -45,6 +45,8 @@ class ConvolutionalNeuralNetwork:
         self.__im = ImageManager()
         self.__io = IOManager()
 
+        # This callback will stop the training when there is no improvement in the loss for three consecutive epochs
+        self.__callback = tf.keras.callbacks.EarlyStopping(monitor = "loss", mode = "min", patience = 3)
 
         # self.__positive_examples_count = self.__im.get_positive_examples_count()
         # self.__negative_examples_count = self.__im.get_negative_examples_count()
@@ -70,46 +72,50 @@ class ConvolutionalNeuralNetwork:
         self.__test_set_negative_examples_count = self.__negative_examples_count - (self.__training_set_negative_examples_count + self.__validation_set_negative_examples_count)
 
         self.__batch_size = 1000
-        self.__finalized_model_filename = "cnn_finalized_model.sav"
+        self.__finalized_model_filename = "cnn_finalized_model"
+
 
     def save_model(self, directory):
-        self.__model.save(directory + "/" + self.__finalized_model_filename)
+        current_time = datetime.today().strftime("%b-%d-%Y_%H-%M-%S")
+        self.__model.save(directory + "/" + self.__finalized_model_filename + "_" + str(current_time) + ".sav")
 
     def load_model(self, path):
         self.__model = keras.models.load_model(path)
 
     def start_learning_process(self):
-        # self.__train(learning_rate = 0.01, epochs = 10)
-        # (test_accuracy, test_f1) = self.__test()
-
-        # log_message = f"(Testing on cleaned data) learning_rate = 0.01; epochs = 10; accuracy = {test_accuracy}; f1 = {test_f1}"
-        # self.__io.append_log(log_message)
-
         log_message = "*-----(CNN_LEARNING_PROCESS_STARTED)-----*"
         self.__io.append_log(log_message)
-        learning_rates = [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0 ]
-        epochs_values = [ 10, 20, 50, 100]
-
-        best_accuracy = 0.0
-        best_learning_rate = 0.0
-        best_epochs_value = 0
-
-        for learning_rate in learning_rates:
-            for epochs in epochs_values:
-                self.__train(learning_rate = learning_rate, epochs = epochs)
-                (accuracy, f1) = self.__validate()
-                log_message = f"(Validation) learning_rate = {learning_rate}; epochs = {epochs}; accuracy = {accuracy}; f1 = {f1}" 
-                self.__io.append_log(log_message)
-                if accuracy > best_accuracy:
-                    best_accuracy = accuracy
-                    best_learning_rate = learning_rate
-                    best_epochs_value = epochs
-
-        print(f"[INFO] BEST TRAINING PARAMETERS:\nlearning_rate = {best_learning_rate}; epochs = {epochs}")
-        self.__train(learning_rate = best_learning_rate, epochs = best_epochs_value)
+        self.__train(learning_rate = 0.01, epochs = 1000)
         (test_accuracy, test_f1) = self.__test()
-        log_message = f"(Testing) learning_rate = {best_learning_rate}; epochs = {best_epochs_value}; accuracy = {test_accuracy}; f1 = {test_f1}"
+
+        log_message = f"(Testing) learning_rate = 0.01; epochs = 10; accuracy = {test_accuracy}; f1 = {test_f1}"
         self.__io.append_log(log_message)
+
+        # log_message = "*-----(CNN_LEARNING_PROCESS_STARTED)-----*"
+        # self.__io.append_log(log_message)
+        # learning_rates = [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0 ]
+        # epochs_values = [ 10, 20, 50, 100]
+
+        # best_accuracy = 0.0
+        # best_learning_rate = 0.0
+        # best_epochs_value = 0
+
+        # for learning_rate in learning_rates:
+        #     for epochs in epochs_values:
+        #         self.__train(learning_rate = learning_rate, epochs = epochs)
+        #         (accuracy, f1) = self.__validate()
+        #         log_message = f"(Validation) learning_rate = {learning_rate}; epochs = {epochs}; accuracy = {accuracy}; f1 = {f1}" 
+        #         self.__io.append_log(log_message)
+        #         if accuracy > best_accuracy:
+        #             best_accuracy = accuracy
+        #             best_learning_rate = learning_rate
+        #             best_epochs_value = epochs
+
+        # print(f"[INFO] BEST TRAINING PARAMETERS:\nlearning_rate = {best_learning_rate}; epochs = {epochs}")
+        # self.__train(learning_rate = best_learning_rate, epochs = best_epochs_value)
+        # (test_accuracy, test_f1) = self.__test()
+        # log_message = f"(Testing) learning_rate = {best_learning_rate}; epochs = {best_epochs_value}; accuracy = {test_accuracy}; f1 = {test_f1}"
+        # self.__io.append_log(log_message)
 
     def __initialize_resnet_model(self, learning_rate):
         if self.__dirty == True:
@@ -181,8 +187,11 @@ class ConvolutionalNeuralNetwork:
             X_training = np.concatenate((X_pos, X_neg), axis = 0)
             y_training = np.hstack([y_pos, y_neg])
 
+            # Rotate the images !!!
+
+
             # Learning from batch
-            history = self.__model.fit(X_training, y_training, epochs = epochs, shuffle = True)
+            history = self.__model.fit(X_training, y_training, epochs = epochs, shuffle = True, callbacks = [self.__callback])
 
             self.__dirty = True
 
