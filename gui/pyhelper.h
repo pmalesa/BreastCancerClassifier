@@ -15,6 +15,7 @@ public:
         Py_Initialize();
         PyRun_SimpleString("import sys");
         PyRun_SimpleString("sys.path.append(\".\")");
+//        PySys_SetPath(Py_GetPath());
     }
     ~CPyInstance()
     {

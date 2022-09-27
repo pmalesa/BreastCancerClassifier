@@ -4,6 +4,8 @@ import os
 from shutil import copyfile
 from os import walk
 from PIL import Image
+from skimage.filters import gaussian
+from skimage.util import random_noise
 import numpy as np
 
 class ImageManager:
@@ -125,6 +127,29 @@ class ImageManager:
             im = Image.open(path)
             if im.size != (50, 50): 
                 os.remove(path)
+
+    def load_augmented_image_data(self, first_image, last_image, image_class):
+        (X, y) = self.load_image_data(first_image, last_image, image_class)
+
+        X_augmented = np.zeros(shape = (4 * X.shape[0], 50, 50, 3))
+        y_augmented = np.hstack([y] * 4)
+
+        index = 0
+        for i in range(len(X)):
+            image = X[i]
+            # image_random_noise = random_noise(image)
+            # image_gaussian = gaussian(image)
+            for j in range(4):
+                X_augmented[index] = np.rot90(image, j)
+                index += 1
+            # for j in range(4):
+            #     X_augmented[index] = np.rot90(image_random_noise, j)
+            #     index += 1
+            # for j in range(4):
+            #     X_augmented[index] = np.rot90(image_gaussian, j)
+            #     index += 1
+
+        return (X_augmented, y_augmented)
 
     def get_pixel_colors(self, image):
         im = Image.open(image)

@@ -28,11 +28,19 @@ BreastCancerClassifier::BreastCancerClassifier(QWidget *parent)
     }
     else
     {
-        QMessageBox::warning(this, QString("BreastCancerClassifier"),
-                                 tr("ERROR: Module could not be imported."));
+        QMessageBox::warning(this, QString("BreastCancerClassifier"), tr("ERROR: Module could not be imported."));
     }
 
     ui_->setupUi(this);
+
+    ui_->moveLeftButton->setIcon(QIcon("./images/left_1.png"));
+    ui_->moveLeftButton_2->setIcon(QIcon("./images/left_2.png"));
+    ui_->moveUpButton->setIcon(QIcon("./images/up_1.png"));
+    ui_->moveUpButton_2->setIcon(QIcon("./images/up_2.png"));
+    ui_->moveRightButton->setIcon(QIcon("./images/right_1.png"));
+    ui_->moveRightButton_2->setIcon(QIcon("./images/right_2.png"));
+    ui_->moveDownButton->setIcon(QIcon("./images/down_1.png"));
+    ui_->moveDownButton_2->setIcon(QIcon("./images/down_2.png"));
 
     imageLabel_ = ui_->imageLabel;
     scrollArea_ = ui_->scrollArea;
@@ -316,6 +324,7 @@ void BreastCancerClassifier::on_zoomOutButton_released()
 
 void BreastCancerClassifier::on_resetButton_released()
 {
+    ui_->resultsTextBrowser->setText("");
     normalSize();
     if (image_.size() != QSize(imageMinSize_, imageMinSize_))
     {
@@ -401,6 +410,7 @@ void BreastCancerClassifier::on_moveUpButton_2_released()
 void BreastCancerClassifier::on_unselectImageButton_released()
 {
     ui_->selectedImageLineEdit->setText("");
+    ui_->resultsTextBrowser->setText("");
     image_ = QImage();
     pixmap_ = QPixmap();
     imageLabel_->setVisible(false);
